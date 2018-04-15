@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
         goto out_free_buf;
     if ((read_mr = dccs_reg_read(id, buf, length)) == NULL)
         goto out_dereg_send_mr;
-    local_conn.addr = htonll(read_mr->addr);
+    local_conn.addr = htonll((uint64_t)read_mr->addr);
     local_conn.rkey = htonl(read_mr->rkey);
 
     if ((rv = dccs_rdma_send(id, &local_conn, sizeof local_conn, send_mr)) != 0) {
