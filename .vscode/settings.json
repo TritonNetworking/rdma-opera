@@ -1,0 +1,15 @@
+{
+    "files.associations": {
+        "rdma_cma.h": "c",
+        "rdma_verbs.h": "c",
+        "stdio.h": "c",
+        "stdlib.h": "c",
+        "__locale": "c",
+        "locale": "c",
+        "getopt.h": "c",
+        "dccs_parameters.h": "c",
+        "__string": "cpp",
+        "string": "cpp",
+        "string_view": "cpp"
+    }
+}
