@@ -25,7 +25,7 @@ int main(int argc, char *argv[]) {
 
     memset(&params, 0, sizeof params);
 
-    if ((rv = dccs_connect(id, res, server, port)) != 0)
+    if ((rv = dccs_connect(&id, &res, server, port)) != 0)
         goto end;
 
     size_t length = 16;
@@ -53,7 +53,7 @@ int main(int argc, char *argv[]) {
     if (rv < 0)
         goto out_dereg_read_mr;
 
-    printf("Received: %s\n", buf);
+    printf("Received: %s\n", (char *)buf);
     printf("End of operations\n");
 
 out_dereg_read_mr:
@@ -62,7 +62,7 @@ out_dereg_recv_mr:
     dccs_dereg_mr(recv_mr);
 out_free_buf:
     free(buf);
-out_disconnect:
+// out_disconnect:
     dccs_client_disconnect(id, res);
 end:
     return rv;

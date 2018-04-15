@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     struct ibv_wc wc;
     int rv = 0;
 
-    if ((rv = dccs_listen(listen_id, id, res, port)) != 0)
+    if ((rv = dccs_listen(&listen_id, &id, &res, port)) != 0)
         goto end;
 
     size_t length = 16;
@@ -53,7 +53,7 @@ out_dereg_send_mr:
     dccs_dereg_mr(send_mr);
 out_free_buf:
     free(buf);
-out_disconnect:
+// out_disconnect:
     dccs_server_disconnect(id, listen_id, res);
 end:
     return rv;

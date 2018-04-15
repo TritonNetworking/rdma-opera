@@ -13,14 +13,14 @@
 
 /* Connection setup/teardown */
 
-int dccs_connect(struct rdma_cm_id *id, struct rdma_addrinfo *res, char *server, char *port) {
+int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *server, char *port) {
     struct rdma_addrinfo hints;
     struct ibv_qp_init_attr attr;
     int rv;
 
     memset(&hints, 0, sizeof hints);
     hints.ai_port_space = RDMA_PS_TCP;
-    if ((rv = rdma_getaddrinfo(server, port, &hints, &res)) != 0) {
+    if ((rv = rdma_getaddrinfo(server, port, &hints, res)) != 0) {
         perror("rmda_getaddrinfo");
         // fprintf(stderr, "rmda_getaddrinfo: %s\n", gai_strerror(rv));
         return rv;
@@ -28,21 +28,21 @@ int dccs_connect(struct rdma_cm_id *id, struct rdma_addrinfo *res, char *server,
 
     memset(&attr, 0, sizeof attr);
     attr.cap.max_send_wr = attr.cap.max_recv_wr = MAX_WR;
-    attr.qp_context = id;
+    attr.qp_context = *id;
     attr.qp_type = IBV_QPT_RC;
-    
-    if ((rv = rdma_create_ep(&id, res, NULL, &attr)) != 0) {
+
+    if ((rv = rdma_create_ep(id, *res, NULL, &attr)) != 0) {
         perror("rdma_create_ep");
     }
 
-    if ((rv = rdma_connect(id, NULL)) != 0) {
+    if ((rv = rdma_connect(*id, NULL)) != 0) {
         perror("rdma_connect");
     }
 
     return rv;
 }
 
-int dccs_listen(struct rdma_cm_id *listen_id, struct rdma_cm_id *id, struct rdma_addrinfo *res, char *port) {
+int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, struct rdma_addrinfo **res, char *port) {
     struct rdma_addrinfo hints;
     struct ibv_qp_init_attr attr;
     int rv;
@@ -50,7 +50,7 @@ int dccs_listen(struct rdma_cm_id *listen_id, struct rdma_cm_id *id, struct rdma
     memset(&hints, 0, sizeof hints);
     hints.ai_flags = RAI_PASSIVE;
     hints.ai_port_space = RDMA_PS_TCP;
-    if ((rv = rdma_getaddrinfo(NULL, port, &hints, &res)) != 0) {
+    if ((rv = rdma_getaddrinfo(NULL, port, &hints, res)) != 0) {
         perror("rmda_getaddrinfo");
         goto end;
     }
@@ -59,24 +59,24 @@ int dccs_listen(struct rdma_cm_id *listen_id, struct rdma_cm_id *id, struct rdma
     attr.cap.max_send_wr = attr.cap.max_recv_wr = MAX_WR;
     attr.qp_type = IBV_QPT_RC;
     
-    if ((rv = rdma_create_ep(&listen_id, res, NULL, &attr)) != 0) {
+    if ((rv = rdma_create_ep(listen_id, *res, NULL, &attr)) != 0) {
         perror("rdma_create_ep");
         goto out_free_addrinfo;
     }
 
-    if ((rv = rdma_listen(listen_id, 0)) != 0) {
+    if ((rv = rdma_listen(*listen_id, 0)) != 0) {
         perror("rdma_listen");
         goto out_destroy_listen_ep;
     }
 
-    if ((rv = rdma_get_request(listen_id, &id)) != 0) {
+    if ((rv = rdma_get_request(*listen_id, id)) != 0) {
         perror("rdma_get_request");
         goto out_destroy_listen_ep;
     }
 
     // need ibv_query_qp?
 
-    if ((rv = rdma_accept(id, NULL)) != 0) {
+    if ((rv = rdma_accept(*id, NULL)) != 0) {
         perror("rdma_accept");
         goto out_destroy_accept_ep;
     }
@@ -84,9 +84,9 @@ int dccs_listen(struct rdma_cm_id *listen_id, struct rdma_cm_id *id, struct rdma
     return 0;
 
 out_destroy_accept_ep:
-    rdma_destroy_ep(id);
+    rdma_destroy_ep(*id);
 out_destroy_listen_ep:
-    rdma_destroy_ep(listen_id);
+    rdma_destroy_ep(*listen_id);
 out_free_addrinfo:
     rdma_freeaddrinfo(res);
 end:
