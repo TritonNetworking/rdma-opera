@@ -17,9 +17,13 @@ char *port = "1234";
 int main(int argc, char *argv[]) {
     struct rdma_cm_id *listen_id, *id;
     struct rdma_addrinfo *res;
+    struct dccs_conn_param local_conn, remote_conn;
     struct ibv_mr *read_mr, *send_mr;
     struct ibv_wc wc;
     int rv = 0;
+
+    memset(&local_conn, 0, sizeof local_conn);
+    memset(&remote_conn, 0, sizeof remote_conn);
 
     if ((rv = dccs_listen(&listen_id, &id, &res, port)) != 0)
         goto end;
@@ -28,23 +32,27 @@ int main(int argc, char *argv[]) {
     void *buf = malloc(length);
     memset(buf, 0, length);
     strcpy(buf, "Hello world.");
-    uint64_t addr = (uint64_t)buf;
+    printf("Buffer: %s.\n", (char *)buf);
 
-    if ((send_mr = dccs_reg_msgs(id, &addr, sizeof addr)) == NULL)
+    if ((send_mr = dccs_reg_msgs(id, &local_conn, sizeof local_conn)) == NULL)
         goto out_free_buf;
-    if ((rv = dccs_rdma_send(id, &addr, sizeof addr, send_mr)) != 0) {
+    if ((read_mr = dccs_reg_read(id, buf, length)) == NULL)
         goto out_dereg_send_mr;
+    local_conn.addr = htonll(read_mr->addr);
+    local_conn.rkey = htonl(read_mr->rkey);
+
+    if ((rv = dccs_rdma_send(id, &local_conn, sizeof local_conn, send_mr)) != 0) {
+        goto out_dereg_read_mr;
     }
     while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
     if (rv < 0)
-        goto out_dereg_send_mr;
+        goto out_dereg_read_mr;
 
-    if ((read_mr = dccs_reg_read(id, buf, length)) == NULL)
-        goto out_dereg_send_mr;
     while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
     if (rv < 0)
         goto out_dereg_read_mr;
 
+    // TODO: add wait for completion
     printf("End of operations\n");
 
 out_dereg_read_mr:

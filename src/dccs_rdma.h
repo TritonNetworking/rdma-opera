@@ -174,10 +174,10 @@ int dccs_rdma_recv(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_
     return rv;
 }
 
-int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr) {
+int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
     int rv;
     int flags = 0;
-    if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, mr->rkey)) != 0) {
+    if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
         perror("rdma_post_read");
     }
 
