@@ -10,6 +10,16 @@
         "dccs_parameters.h": "c",
         "__string": "cpp",
         "string": "cpp",
-        "string_view": "cpp"
+        "string_view": "cpp",
+        "__bit_reference": "c",
+        "__split_buffer": "c",
+        "__tree": "c",
+        "initializer_list": "c",
+        "ios": "c",
+        "iterator": "c",
+        "list": "c",
+        "map": "c",
+        "set": "c",
+        "vector": "c"
     }
 }

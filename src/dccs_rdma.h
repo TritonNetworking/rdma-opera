@@ -118,7 +118,7 @@ void dccs_server_disconnect(struct rdma_cm_id *id, struct rdma_cm_id *listen_id,
 
 struct ibv_mr * dccs_reg_msgs(struct rdma_cm_id *id, void *addr, size_t length) {
     struct ibv_mr *mr;
-    if ((mr = rdma_reg_msgs(id, addr, length)) != NULL) {
+    if ((mr = rdma_reg_msgs(id, addr, length)) == NULL) {
         perror("rdma_reg_msgs");
     }
 
@@ -127,7 +127,7 @@ struct ibv_mr * dccs_reg_msgs(struct rdma_cm_id *id, void *addr, size_t length) 
 
 struct ibv_mr * dccs_reg_read(struct rdma_cm_id *id, void *addr, size_t length) {
     struct ibv_mr *mr;
-    if ((mr = rdma_reg_read(id, addr, length)) != NULL) {
+    if ((mr = rdma_reg_read(id, addr, length)) == NULL) {
         perror("rdma_reg_read");
     }
 
@@ -136,7 +136,7 @@ struct ibv_mr * dccs_reg_read(struct rdma_cm_id *id, void *addr, size_t length) 
 
 struct ibv_mr * dccs_reg_write(struct rdma_cm_id *id, void *addr, size_t length) {
     struct ibv_mr *mr;
-    if ((mr = rdma_reg_write(id, addr, length)) != NULL) {
+    if ((mr = rdma_reg_write(id, addr, length)) == NULL) {
         perror("rdma_reg_write");
     }
 
@@ -191,7 +191,7 @@ int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_add
  */
 int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
-    if ((rv = rdma_get_send_comp(id, wc)) != 0) {
+    if ((rv = rdma_get_send_comp(id, wc)) == -1) {
         perror("rdma_get_send_comp");
     }
 
@@ -203,7 +203,7 @@ int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
  */
 int dccs_rdma_recv_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
-    if ((rv = rdma_get_recv_comp(id, wc)) != 0) {
+    if ((rv = rdma_get_recv_comp(id, wc)) == -1) {
         perror("rdma_get_recv_comp");
     }
 
