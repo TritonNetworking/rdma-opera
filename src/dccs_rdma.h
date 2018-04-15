@@ -22,8 +22,7 @@ int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *serve
     hints.ai_port_space = RDMA_PS_TCP;
     if ((rv = rdma_getaddrinfo(server, port, &hints, res)) != 0) {
         perror("rmda_getaddrinfo");
-        // fprintf(stderr, "rmda_getaddrinfo: %s\n", gai_strerror(rv));
-        return rv;
+        goto end;
     }
 
     memset(&attr, 0, sizeof attr);
@@ -33,12 +32,21 @@ int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *serve
 
     if ((rv = rdma_create_ep(id, *res, NULL, &attr)) != 0) {
         perror("rdma_create_ep");
+        goto out_free_addrinfo;
     }
 
     if ((rv = rdma_connect(*id, NULL)) != 0) {
         perror("rdma_connect");
+        goto out_destroy_listen_ep;
     }
 
+    return 0;
+
+out_destroy_listen_ep:
+    rdma_destroy_ep(*id);
+out_free_addrinfo:
+    rdma_freeaddrinfo(*res);
+end:
     return rv;
 }
 
@@ -88,7 +96,7 @@ out_destroy_accept_ep:
 out_destroy_listen_ep:
     rdma_destroy_ep(*listen_id);
 out_free_addrinfo:
-    rdma_freeaddrinfo(res);
+    rdma_freeaddrinfo(*res);
 end:
     return rv;
 }

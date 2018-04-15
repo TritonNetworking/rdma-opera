@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
 
     size_t length = 16;
     void *buf = malloc(length);
-    memset(buf, 0, sizeof(buf));
+    memset(buf, 0, length);
     strcpy(buf, "Hello world.");
     uint64_t addr = (uint64_t)buf;
 
