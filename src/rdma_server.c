@@ -15,6 +15,8 @@
 
 char *port = "1234";
 
+uint64_t clock_rate = 0;
+
 int main(int argc, char *argv[]) {
     struct rdma_cm_id *listen_id, *id;
     struct rdma_addrinfo *res;
@@ -22,6 +24,9 @@ int main(int argc, char *argv[]) {
     struct ibv_mr *read_mr, *send_mr, *recv_mr;
     struct ibv_wc wc;
     int rv = 0;
+
+    clock_rate = get_clock_rate();
+    debug("Clock rate = %lu.", clock_rate);
 
     memset(&local_conn, 0, sizeof local_conn);
     memset(&remote_conn, 0, sizeof remote_conn);

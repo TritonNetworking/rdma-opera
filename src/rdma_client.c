@@ -17,6 +17,8 @@
 char *server = "10.0.0.100";
 char *port = "1234";
 
+uint64_t clock_rate = 0;
+
 int main(int argc, char *argv[]) {
     struct rdma_cm_id *id;
     struct rdma_addrinfo *res;
@@ -26,6 +28,9 @@ int main(int argc, char *argv[]) {
     uint64_t remote_addr;
     uint32_t remote_rkey;
     int rv = 0;
+
+    clock_rate = get_clock_rate();
+    debug("Clock rate = %lu.", clock_rate);
 
     memset(&local_conn, 0, sizeof local_conn);
     memset(&remote_conn, 0, sizeof remote_conn);
@@ -55,17 +60,20 @@ int main(int argc, char *argv[]) {
     read_mr->rkey = remote_rkey;
     debug("mr->length = %zu.\n", read_mr->length);
 
+    uint64_t start = get_cycles();
     if ((rv = dccs_rdma_read(id, read_mr, remote_addr, remote_rkey)) != 0)
         goto out_dereg_read_mr;
     while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
     if (rv < 0)
         goto out_dereg_read_mr;
+    uint64_t end = get_cycles();
 
     debug("Received (bin): ");
     debug_bin(buf, length);
     debug("\n");
     debug("Received (ASCII): \"%s\"\n", (char *)buf);
 
+    debug("Time elapsed: %f msec.", (double)(end - start) * 1e6 / clock_rate);
     debug("End of operations\n");
 
 out_dereg_read_mr:
