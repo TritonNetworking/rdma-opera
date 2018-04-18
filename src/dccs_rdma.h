@@ -9,6 +9,7 @@
 #include <byteswap.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
+#include "utils.h"
 
 #define MAX_WR 1000
 
@@ -169,29 +170,36 @@ int dccs_exchange(struct rdma_cm_id *id) {
 int dccs_rdma_send(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr) {
     int rv;
     int flags = 0; //IBV_SEND_INLINE;    // TODO: check if possible
+    flags |= IBV_SEND_SIGNALED;
+    debug("RDMA send ...\n");
     if ((rv = rdma_post_send(id, NULL, addr, length, mr, flags)) != 0) {
         perror("rdma_post_send");
     }
 
+    debug("RDMA send returned %d.\n", rv);
     return rv;
 }
 
 int dccs_rdma_recv(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr) {
     int rv;
+    debug("RDMA recv ...\n");
     if ((rv = rdma_post_recv(id, NULL, addr, length, mr)) != 0) {
         perror("rdma_post_recv");
     }
 
+    debug("RDMA recv returned %d.\n", rv);
     return rv;
 }
 
 int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
     int rv;
-    int flags = 0;
+    int flags = IBV_SEND_SIGNALED;
+    debug("RDMA read ...\n");
     if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
         perror("rdma_post_read");
     }
 
+    debug("RDMA read returned %d.\n", rv);
     return rv;
 }
 
@@ -202,10 +210,12 @@ int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_add
  */
 int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
+    debug("RDMA send completion ..\n");
     if ((rv = rdma_get_send_comp(id, wc)) == -1) {
         perror("rdma_get_send_comp");
     }
 
+    debug("RDMA send completion returned %d.\n", rv);
     return rv;
 }
 
@@ -214,10 +224,12 @@ int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
  */
 int dccs_rdma_recv_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
+    debug("RDMA recv completion ..\n");
     if ((rv = rdma_get_recv_comp(id, wc)) == -1) {
         perror("rdma_get_recv_comp");
     }
 
+    debug("RDMA recv completion returned %d.\n", rv);
     return rv;
 }
 
