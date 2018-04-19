@@ -10,6 +10,8 @@
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
+#include "config.h"
+#include "utils.h"
 #include "dccs_parameters.h"
 #include "dccs_rdma.h"
 
@@ -20,62 +22,40 @@ uint64_t clock_rate = 0;
 int main(int argc, char *argv[]) {
     struct rdma_cm_id *listen_id, *id;
     struct rdma_addrinfo *res;
-    struct dccs_conn_param local_conn, remote_conn;
-    struct ibv_mr *read_mr, *send_mr, *recv_mr;
-    struct ibv_wc wc;
+    struct dccs_request *requests;
+    size_t requests_count = MESSAGE_COUNT;
+    size_t requests_length = MESSAGE_LENGTH;
     int rv = 0;
 
     clock_rate = get_clock_rate();
     debug("Clock rate = %lu.", clock_rate);
 
-    memset(&local_conn, 0, sizeof local_conn);
-    memset(&remote_conn, 0, sizeof remote_conn);
-
     if ((rv = dccs_listen(&listen_id, &id, &res, port)) != 0)
         goto end;
 
-    size_t length = 32;
-    void *buf = malloc(length);
-    memset(buf, 0, length);
-    strcpy(buf, "Hello world.");
-    debug("Buffer: %s.\n", (char *)buf);
+    size_t requests_size = requests_count * sizeof(struct dccs_request);
+    requests = malloc(requests_size);
+    memset(requests, 0, requests_size);
+    if ((rv = allocate_buffer(id, requests, requests_length, requests_count, Read)) != 0) {
+        sys_error("Failed to allocate buffers.\n");
+        goto out_disconnect;
+    }
 
-    if ((send_mr = dccs_reg_msgs(id, &local_conn, sizeof local_conn)) == NULL)
-        goto out_free_buf;
-    if ((read_mr = dccs_reg_read(id, buf, length)) == NULL)
-        goto out_dereg_send_mr;
+    if ((rv = send_local_mr_info(id, requests, requests_count)) != 0) {
+        sys_error("Failed to get remote MR info.\n");
+        goto out_deallocate_buffer;
+    }
 
-    local_conn.addr = htonll((uint64_t)read_mr->addr);
-    local_conn.rkey = htonl(read_mr->rkey);
-    if ((rv = dccs_rdma_send(id, &local_conn, sizeof local_conn, send_mr)) != 0)
-        goto out_dereg_read_mr;
-    while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
-    if (rv < 0)
-        goto out_dereg_read_mr;
-    debug("Successfully sent local connection parameters: addr = %lu, lkey = %u, rkey = %u.\n", (uint64_t)read_mr->addr, read_mr->lkey, read_mr->rkey);
+    char buf[4] = { 0 };
+    if ((rv = recv_message(id, buf, 4)) != 0) {
+        sys_error("Failed to recv terminating message.\n");
+        goto out_deallocate_buffer;
+    }
 
-    // TODO: wait one sec for remote RDMA read to complete
-    sleep(1);
-
-/*
-    while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
-    if (rv < 0)
-        goto out_dereg_read_mr;
-*/
-
-    // TODO: add wait for completion
-    debug("End of operations\n");
-
-out_dereg_read_mr:
-    debug("De-reging read_mr\n");
-    dccs_dereg_mr(read_mr);
-out_dereg_send_mr:
-    debug("De-reging send_mr\n");
-    dccs_dereg_mr(send_mr);
-out_free_buf:
-    debug("freeing buf\n");
-    free(buf);
-// out_disconnect:
+out_deallocate_buffer:
+    debug("de-allocating buffer\n");
+    deallocate_buffer(requests, requests_count);
+out_disconnect:
     debug("Disconnecting\n");
     dccs_server_disconnect(id, listen_id, res);
 end:

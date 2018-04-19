@@ -10,6 +10,8 @@
 
 #define DEBUG 1
 #define debug(...) if (DEBUG) fprintf(stderr, __VA_ARGS__)
+#define sys_error(...) fprintf(stderr, __VA_ARGS__)
+#define sys_warning(...) fprintf(stderr, __VA_ARGS__)
 
 void debug_bin(void *buf, size_t length) {
 #if DEBUG
