@@ -43,23 +43,23 @@ int main(int argc, char *argv[]) {
         goto out_disconnect;
     }
 
-    if ((rv = get_remote_mr_info(id, requests, requests_count)) != 0) {
+    if ((rv = get_remote_mr_info(id, requests, requests_count)) < 0) {
         sys_error("Failed to get remote MR info.\n");
         goto out_deallocate_buffer;
     }
 
-    if ((rv = send_requests(id, requests, requests_count)) != 0) {
+    if ((rv = send_requests(id, requests, requests_count)) < 0) {
         sys_error("Failed to send all requests.\n");
         goto out_deallocate_buffer;
     }
 
-    if ((rv = wait_requests(id, requests, requests_count)) != 0) {
+    if ((rv = wait_requests(id, requests, requests_count)) < 0) {
         sys_error("Failed to send comp all requests.\n");
         goto out_deallocate_buffer;
     }
 
     char buf[4] = "End";
-    if ((rv = send_message(id, buf, 4)) != 0) {
+    if ((rv = send_message(id, buf, 4)) < 0) {
         sys_error("Failed to send terminating message.\n");
         goto out_deallocate_buffer;
     }

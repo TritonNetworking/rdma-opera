@@ -41,13 +41,13 @@ int main(int argc, char *argv[]) {
         goto out_disconnect;
     }
 
-    if ((rv = send_local_mr_info(id, requests, requests_count)) != 0) {
+    if ((rv = send_local_mr_info(id, requests, requests_count)) < 0) {
         sys_error("Failed to get remote MR info.\n");
         goto out_deallocate_buffer;
     }
 
     char buf[4] = { 0 };
-    if ((rv = recv_message(id, buf, 4)) != 0) {
+    if ((rv = recv_message(id, buf, 4)) < 0) {
         sys_error("Failed to recv terminating message.\n");
         goto out_deallocate_buffer;
     }

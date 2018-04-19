@@ -522,7 +522,7 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
         }
     }
 
-    return failed_count;
+    return -failed_count;
 }
 
 /**
@@ -537,11 +537,11 @@ int wait_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
         struct dccs_request *request = requests + n;
         rv = dccs_rdma_send_comp(id, &wc);
         request->end = get_cycles();
-        if (rv != 0)
+        if (rv < 0)
             failed_count++;
     }
 
-    return failed_count;
+    return -failed_count;
 }
 
 /* Reporting functions */
