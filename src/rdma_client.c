@@ -30,11 +30,12 @@ int main(int argc, char *argv[]) {
     int rv = 0;
 
     clock_rate = get_clock_rate();
-    debug("Clock rate = %lu.", clock_rate);
+    debug("Clock rate = %lu.\n", clock_rate);
 
     if ((rv = dccs_connect(&id, &res, server, port)) != 0)
         goto end;
 
+debug("Allocating buffer ...\n");
     size_t requests_size = requests_count * sizeof(struct dccs_request);
     requests = malloc(requests_size);
     memset(requests, 0, requests_size);
@@ -43,21 +44,26 @@ int main(int argc, char *argv[]) {
         goto out_disconnect;
     }
 
+debug("Getting remote MR info ...\n");
     if ((rv = get_remote_mr_info(id, requests, requests_count)) < 0) {
+        debug("rv = %d.\n", rv);
         sys_error("Failed to get remote MR info.\n");
         goto out_deallocate_buffer;
     }
 
+debug("Sending RDMA requests ...\n");
     if ((rv = send_requests(id, requests, requests_count)) < 0) {
         sys_error("Failed to send all requests.\n");
         goto out_deallocate_buffer;
     }
 
+debug("Waiting for RDMA requests completion.\n");
     if ((rv = wait_requests(id, requests, requests_count)) < 0) {
         sys_error("Failed to send comp all requests.\n");
         goto out_deallocate_buffer;
     }
 
+debug("Sending terminating message ...\n");
     char buf[4] = "End";
     if ((rv = send_message(id, buf, 4)) < 0) {
         sys_error("Failed to send terminating message.\n");

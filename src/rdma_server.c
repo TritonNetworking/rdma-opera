@@ -28,11 +28,12 @@ int main(int argc, char *argv[]) {
     int rv = 0;
 
     clock_rate = get_clock_rate();
-    debug("Clock rate = %lu.", clock_rate);
+    debug("Clock rate = %lu.\n", clock_rate);
 
     if ((rv = dccs_listen(&listen_id, &id, &res, port)) != 0)
         goto end;
 
+debug("Allocating buffer ...\n");
     size_t requests_size = requests_count * sizeof(struct dccs_request);
     requests = malloc(requests_size);
     memset(requests, 0, requests_size);
@@ -41,11 +42,13 @@ int main(int argc, char *argv[]) {
         goto out_disconnect;
     }
 
+debug("Sending local MR info ...\n");
     if ((rv = send_local_mr_info(id, requests, requests_count)) < 0) {
         sys_error("Failed to get remote MR info.\n");
         goto out_deallocate_buffer;
     }
 
+debug("Waiting for end message ...\n");
     char buf[4] = { 0 };
     if ((rv = recv_message(id, buf, 4)) < 0) {
         sys_error("Failed to recv terminating message.\n");
