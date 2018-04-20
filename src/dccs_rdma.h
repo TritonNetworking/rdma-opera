@@ -550,6 +550,83 @@ int wait_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
     return -failed_count;
 }
 
+/**
+ * Send and wait for multiple RDMA requests.
+ */
+int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t count) {
+    int rv;
+    int failed_count = 0;
+    struct ibv_wc wc;
+
+    for (size_t n = 0; n < count; n++) {
+        struct dccs_request *request = requests + n;
+        switch (request->verb) {
+            case Send:
+                request->mr = dccs_reg_msgs(id, request->buf, request->length);
+                if (request->mr == NULL)
+                    failed_count++;
+                break;
+            case Read:
+                request->mr = dccs_reg_read(id, request->buf, request->length);
+                if (request->mr == NULL)
+                    failed_count++;
+                break;
+            case Write:
+                request->mr = dccs_reg_write(id, request->buf, request->length);
+                if (request->mr == NULL)
+                    failed_count++;
+                break;
+            default:
+                printf("Unrecognized request (n = %zu).", n);
+                break;
+        }
+    }
+
+    uint64_t start = get_cycles();
+
+    for (size_t n = 0; n < count; n++) {
+        struct dccs_request *request = requests + n;
+        bool failed = false;
+
+        switch (request->verb) {
+            case Send:
+                rv = dccs_rdma_send(id, request->buf, request->length, request->mr);
+                request->start = get_cycles();
+                if (rv != 0)
+                    failed = true;
+                break;
+            case Read:
+                rv = dccs_rdma_read(id, request->mr, request->remote_addr, request->remote_rkey);
+                request->start = get_cycles();
+                if (rv != 0)
+                    failed = true;
+                break;
+            case Write:
+                rv = dccs_rdma_write(id, request->mr, request->remote_addr, request->remote_rkey);
+                request->start = get_cycles();
+                if (rv != 0)
+                    failed = true;
+                break;
+            default:
+                printf("Unrecognized request (n = %zu).", n);
+                break;
+        }
+
+        rv = dccs_rdma_send_comp(id, &wc);
+        request->end = get_cycles();
+        if (rv < 0)
+            failed = true;
+
+        if (failed)
+            failed_count++;
+    }
+
+    uint64_t end = get_cycles();
+    printf("Time elapsed to send and wait all requests: %.3f msec.\n", (double)(end - start) * 1e6 / 2.4e9);
+
+    return -failed_count;
+}
+
 /* Reporting functions */
 
 /**

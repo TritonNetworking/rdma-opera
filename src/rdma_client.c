@@ -51,6 +51,7 @@ debug("Getting remote MR info ...\n");
         goto out_deallocate_buffer;
     }
 
+/*
 debug("Sending RDMA requests ...\n");
     if ((rv = send_requests(id, requests, requests_count)) < 0) {
         sys_error("Failed to send all requests.\n");
@@ -60,6 +61,13 @@ debug("Sending RDMA requests ...\n");
 debug("Waiting for RDMA requests completion.\n");
     if ((rv = wait_requests(id, requests, requests_count)) < 0) {
         sys_error("Failed to send comp all requests.\n");
+        goto out_deallocate_buffer;
+    }
+*/
+
+debug("Sending and waiting for RDMA requests ...\n");
+    if ((rv = send_and_wait_requests(id, requests, requests_count)) < 0) {
+        sys_error("Failed to send and send comp all requests.\n");
         goto out_deallocate_buffer;
     }
 
