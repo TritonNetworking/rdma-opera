@@ -637,17 +637,21 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
     uint64_t min = UINT64_MAX;
     uint64_t max = 0;
 
-    bool verbose = false;
+    bool verbose = true;
 
     printf("\n=====================\n");
     printf("Report\n\n");
 
     printf("Raw latency (msec):\n");
+    printf("Start,End,Latency\n");
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         uint64_t elapsed_cycles = request->end - request->start;
+        double start = (double)request->start * 1e6 / clock_rate;
+        double end = (double)request->end * 1e6 / clock_rate;
+        double latency = (double)elapsed_cycles * 1e6 / clock_rate;
         if (verbose)
-            printf("%.3f\n", (double)elapsed_cycles * 1e6 / clock_rate);
+            printf("%.3f,%.3f,%.3f\n", start, end, latency);
 
         sum += elapsed_cycles;
         if (elapsed_cycles > max)
