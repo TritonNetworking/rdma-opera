@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <byteswap.h>
+#include <stdbool.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 #include "utils.h"
@@ -171,35 +172,35 @@ int dccs_rdma_send(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_
     int rv;
     int flags = 0; //IBV_SEND_INLINE;    // TODO: check if possible
     flags |= IBV_SEND_SIGNALED;
-    debug("RDMA send ...\n");
+    //debug("RDMA send ...\n");
     if ((rv = rdma_post_send(id, NULL, addr, length, mr, flags)) != 0) {
         perror("rdma_post_send");
     }
 
-    debug("RDMA send returned %d.\n", rv);
+    //debug("RDMA send returned %d.\n", rv);
     return rv;
 }
 
 int dccs_rdma_recv(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr) {
     int rv;
-    debug("RDMA recv ...\n");
+    //debug("RDMA recv ...\n");
     if ((rv = rdma_post_recv(id, NULL, addr, length, mr)) != 0) {
         perror("rdma_post_recv");
     }
 
-    debug("RDMA recv returned %d.\n", rv);
+    //debug("RDMA recv returned %d.\n", rv);
     return rv;
 }
 
 int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
     int rv;
     int flags = IBV_SEND_SIGNALED;
-    debug("RDMA read ...\n");
+    //debug("RDMA read ...\n");
     if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
         perror("rdma_post_read");
     }
 
-    debug("RDMA read returned %d.\n", rv);
+    //debug("RDMA read returned %d.\n", rv);
     return rv;
 }
 
@@ -222,12 +223,12 @@ int dccs_rdma_write(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_ad
  */
 int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
-    debug("RDMA send completion ..\n");
+    //debug("RDMA send completion ..\n");
     if ((rv = rdma_get_send_comp(id, wc)) == -1) {
         perror("rdma_get_send_comp");
     }
 
-    debug("RDMA send completion returned %d.\n", rv);
+    //debug("RDMA send completion returned %d.\n", rv);
     return rv;
 }
 
@@ -236,12 +237,12 @@ int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
  */
 int dccs_rdma_recv_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
-    debug("RDMA recv completion ..\n");
+    //debug("RDMA recv completion ..\n");
     if ((rv = rdma_get_recv_comp(id, wc)) == -1) {
         perror("rdma_get_recv_comp");
     }
 
-    debug("RDMA recv completion returned %d.\n", rv);
+    //debug("RDMA recv completion returned %d.\n", rv);
     return rv;
 }
 
@@ -495,6 +496,8 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
         }
     }
 
+    uint64_t start = get_cycles();
+
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         switch (request->verb) {
@@ -521,6 +524,9 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
                 break;
         }
     }
+
+    uint64_t end = get_cycles();
+    printf("Time elapsed to send all requests: %.3f msec.\n", (double)(end - start) * 1e6 / 2.4e9);
 
     return -failed_count;
 }
@@ -554,13 +560,18 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
     uint64_t min = UINT64_MAX;
     uint64_t max = 0;
 
-    printf("=====================\n");
+    bool verbose = false;
+
+    printf("\n=====================\n");
     printf("Report\n\n");
+
     printf("Raw latency (msec):\n");
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         uint64_t elapsed_cycles = request->end - request->start;
-        printf("%.3f\n", (double)elapsed_cycles * 1e6 / clock_rate);
+        if (verbose)
+            printf("%.3f\n", (double)elapsed_cycles * 1e6 / clock_rate);
+
         sum += elapsed_cycles;
         if (elapsed_cycles > max)
             max = elapsed_cycles;
@@ -569,7 +580,7 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
     }
 
     printf("Stats: average: %.3f msec, min: %.3f msec, max: %.3f msec.\n", (double)sum / count * 1e6 / clock_rate, (double)min * 1e6/ clock_rate, (double)max * 1e6 / clock_rate);
-    printf("=====================\n");
+    printf("=====================\n\n");
 }
 
 #endif // DCCS_RDMA_H
