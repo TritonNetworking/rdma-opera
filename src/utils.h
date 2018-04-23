@@ -66,5 +66,14 @@ uint64_t get_clock_rate() {
 
 #endif
 
+int compare_double(const void *a, const void *b)
+{
+    return (*(double*)a - *(double*)b);
+}
+
+void sort_latencies(double *latencies, size_t count) {
+    qsort(latencies, count, sizeof(double), compare_double);
+}
+
 #endif // DCCS_UTIL_H
 

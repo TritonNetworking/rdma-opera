@@ -5,8 +5,9 @@
 #ifndef DCCS_RDMA_H
 #define DCCS_RDMA_H
 
-#include <errno.h>
 #include <byteswap.h>
+#include <errno.h>
+#include <float.h>
 #include <stdbool.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
@@ -633,11 +634,13 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
  * Print latency report.
  */
 void print_latency_report(struct dccs_request *requests, size_t count, uint64_t clock_rate) {
-    uint64_t sum = 0;
-    uint64_t min = UINT64_MAX;
-    uint64_t max = 0;
+    double sum = 0;
+    double min = DBL_MAX;
+    double max = 0;
+    double median, average;
 
     bool verbose = true;
+    double *latencies = malloc(count * sizeof(double));
 
     printf("\n=====================\n");
     printf("Report\n\n");
@@ -650,18 +653,27 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
         double start = (double)request->start * 1e6 / clock_rate;
         double end = (double)request->end * 1e6 / clock_rate;
         double latency = (double)elapsed_cycles * 1e6 / clock_rate;
+        latencies[n] = latency;
         if (verbose)
             printf("%.3f,%.3f,%.3f\n", start, end, latency);
 
-        sum += elapsed_cycles;
-        if (elapsed_cycles > max)
-            max = elapsed_cycles;
-        if (elapsed_cycles < min)
-            min = elapsed_cycles;
+        sum += latency;
+        if (latency > max)
+            max = latency;
+        if (latency < min)
+            min = latency;
     }
 
-    printf("Stats: average: %.3f msec, min: %.3f msec, max: %.3f msec.\n", (double)sum / count * 1e6 / clock_rate, (double)min * 1e6/ clock_rate, (double)max * 1e6 / clock_rate);
+    sort_latencies(latencies, count);
+    median = latencies[count / 2];
+    average = sum / count;
+
+    printf("\n");
+    printf("Configuration: request length: %zu, # of requests: %zu.\n", requests->length, count);
+    printf("Stats: median: %.3f msec, average: %.3f, min: %.3f msec, max: %.3f msec.\n", median, average, min, max);
     printf("=====================\n\n");
+
+    free(latencies);
 }
 
 #endif // DCCS_RDMA_H
