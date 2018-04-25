@@ -14,6 +14,9 @@
 #include "utils.h"
 
 #define MAX_WR 1000
+#define VERBOSE_TIMING 1
+
+bool verbose = false;
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
@@ -307,43 +310,69 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     struct ibv_wc wc;
     int rv;
 
-    // Receive count
-    size_t rcount = 0;
-    if ((mr_count = dccs_reg_msgs(id, &rcount, sizeof rcount)) == NULL)
-        goto end;
-    if ((rv = dccs_rdma_recv(id, &rcount, sizeof rcount, mr_count)) != 0) {
-        sys_error("Failed to recv # of RDMA requests to remote side.\n");
-        goto out_dereg_mr_count;
-    }
-    while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
-    if (rv < 0) {
-        sys_error("Failed to recv comp # of RDMA requests to remote side.\n");
-        goto out_dereg_mr_count;
-    }
-
-    if (rcount != count) {
-        sys_error("Inconsistent request count: local is %zu, remote is %zu.\n", count, rcount);
-        goto out_dereg_mr_count;
-    }
-
+#if VERBOSE_TIMING
+    uint64_t t = get_cycles();
+#endif
     // Allocate array
     size_t array_size = count * sizeof(struct dccs_mr_info);
     struct dccs_mr_info *mr_infos = malloc(array_size);
     memset(mr_infos, 0, array_size);
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
 
-    // Receive RDMA read/write info
-    if ((mr_array = dccs_reg_msgs(id, mr_infos, array_size)) == NULL)
+    t = get_cycles();
+#endif
+    size_t rcount = 0;
+    if ((mr_count = dccs_reg_msgs(id, &rcount, sizeof rcount)) == NULL)
         goto out_free_buf;
+    if ((mr_array = dccs_reg_msgs(id, mr_infos, array_size)) == NULL)
+        goto out_dereg_mr_count;
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to regiser MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+
+    t = get_cycles();
+#endif
+    // Receive count
+    if ((rv = dccs_rdma_recv(id, &rcount, sizeof rcount, mr_count)) != 0) {
+        sys_error("Failed to recv # of RDMA requests to remote side.\n");
+        goto failure;
+    }
+    while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
+    if (rv < 0) {
+        sys_error("Failed to recv comp # of RDMA requests to remote side.\n");
+        goto failure;
+    }
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to receive count: %.3f µsec.\n", get_time_in_microseconds(t));
+#endif
+
+    if (rcount != count) {
+        sys_error("Inconsistent request count: local is %zu, remote is %zu.\n", count, rcount);
+        goto failure;
+    }
+
+#if VERBOSE_TIMING
+    t = get_cycles();
+#endif
+    // Receive RDMA read/write info
     if ((rv = dccs_rdma_recv(id, mr_infos, array_size, mr_array)) != 0) {
         sys_error("Failed to recv RDMA read/write request info to remote side.\n");
-        goto out_dereg_mr_array;
+        goto failure;
     }
     while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
     if (rv < 0) {
         sys_error("Failed to recv comp RDMA read/write request info to remote side.\n");
-        goto out_dereg_mr_array;
+        goto failure;
     }
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to receive MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
+    t = get_cycles();
+#endif
     // Process received info
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
@@ -351,14 +380,25 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
         request->remote_addr = ntohll(mr_info->addr);
         request->remote_rkey = ntohl(mr_info->rkey);
     }
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to copy MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
-out_dereg_mr_array:
+    t = get_cycles();
+#endif
+failure:
+// out_dereg_mr_array:
     dccs_dereg_mr(mr_array);
-out_free_buf:
-    free(mr_infos);
 out_dereg_mr_count:
     dccs_dereg_mr(mr_count);
-end:
+out_free_buf:
+    free(mr_infos);
+
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
+#endif
+
     return rv;
 }
 
@@ -370,6 +410,9 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     struct ibv_wc wc;
     int rv;
 
+#if VERBOSE_TIMING
+    uint64_t t = get_cycles();
+#endif
     size_t array_size = count * sizeof(struct dccs_mr_info);
     struct dccs_mr_info *mr_infos = malloc(array_size);
     memset(mr_infos, 0, array_size);
@@ -380,38 +423,64 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
         mr_info->addr = htonll((uint64_t)request->mr->addr);
         mr_info->rkey = htonl(request->mr->rkey);
     }
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
 
+    t = get_cycles();
+#endif
     if ((mr_count = dccs_reg_msgs(id, &count, sizeof count)) == NULL)
         goto out_free_buf;
     if ((mr_array = dccs_reg_msgs(id, mr_infos, array_size)) == NULL)
         goto out_dereg_mr_count;
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to register MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
+    t = get_cycles();
+#endif
     if ((rv = dccs_rdma_send(id, &count, sizeof count, mr_count)) != 0) {
         sys_error("Failed to send # of RDMA requests to remote side.\n");
-        goto out_dereg_mr_array;
+        goto failure;
     }
     while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
     if (rv < 0) {
         sys_error("Failed to send comp # of RDMA requests to remote side.\n");
-        goto out_dereg_mr_array;
+        goto failure;
     }
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to send count: %.3f µsec.\n", get_time_in_microseconds(t));
 
+    t = get_cycles();
+#endif
     if ((rv = dccs_rdma_send(id, mr_infos, array_size, mr_array)) != 0) {
         sys_error("Failed to send RDMA read/write request info to remote side.\n");
-        goto out_dereg_mr_array;
+        goto failure;
     }
     while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
     if (rv < 0) {
         sys_error("Failed to send comp RDMA read/write request info to remote side.\n");
-        goto out_dereg_mr_array;
+        goto failure;
     }
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to send MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
-out_dereg_mr_array:
+    t = get_cycles();
+#endif
+failure:
+// out_dereg_mr_array:
     dccs_dereg_mr(mr_array);
 out_dereg_mr_count:
     dccs_dereg_mr(mr_count);
 out_free_buf:
     free(mr_infos);
+
+#if VERBOSE_TIMING
+    t = get_cycles() - t;
+    debug("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
+#endif
 
     return rv;
 }
@@ -639,14 +708,16 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
     double max = 0;
     double median, average;
 
-    bool verbose = true;
     double *latencies = malloc(count * sizeof(double));
 
     printf("\n=====================\n");
     printf("Report\n\n");
 
-    printf("Raw latency (µsec):\n");
-    printf("Start,End,Latency\n");
+    if (verbose) {
+        printf("Raw latency (µsec):\n");
+        printf("Start,End,Latency\n");
+    }
+
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         uint64_t elapsed_cycles = request->end - request->start;
@@ -664,11 +735,13 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
             min = latency;
     }
 
+    if (verbose)
+        printf("\n");
+
     sort_latencies(latencies, count);
     median = latencies[count / 2];
     average = sum / count;
 
-    printf("\n");
     printf("Configuration: request length: %zu, # of requests: %zu.\n", requests->length, count);
     printf("Stats: median: %.3f µsec, average: %.3f, min: %.3f µsec, max: %.3f µsec.\n", median, average, min, max);
     printf("=====================\n\n");

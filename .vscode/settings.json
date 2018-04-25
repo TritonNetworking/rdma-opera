@@ -20,6 +20,10 @@
         "list": "c",
         "map": "c",
         "set": "c",
-        "vector": "c"
+        "vector": "c",
+        "memory": "cpp",
+        "algorithm": "cpp",
+        "bitset": "cpp",
+        "chrono": "cpp"
     }
 }

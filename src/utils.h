@@ -66,6 +66,10 @@ uint64_t get_clock_rate() {
 
 #endif
 
+double get_time_in_microseconds(uint64_t cycles) {
+    return (double)cycles / CPU_CLOCK_RATE * 1e6;
+}
+
 int compare_double(const void *a, const void *b)
 {
     return (*(double*)a - *(double*)b);
