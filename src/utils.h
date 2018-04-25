@@ -7,6 +7,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#include <openssl/sha.h>
+
+/* Debug functions */
 
 #define DEBUG 1
 #define debug(...) if (DEBUG) fprintf(stderr, __VA_ARGS__)
@@ -15,13 +19,29 @@
 
 void debug_bin(void *buf, size_t length) {
 #if DEBUG
-    char *c;
+    unsigned char *c;
     for (size_t i = 0; i < length; i++) {
         c = buf + i;
         fprintf(stderr, "%02x", *c);
     }
 #endif
 }
+
+char *bin_to_hex_string(void *buf, size_t length) {
+    char *s = malloc(2 * length + 1);
+    unsigned char *c;
+    char temp[3];
+    for (size_t i = 0; i < length; i++) {
+        c = (unsigned char *)buf + i;
+        sprintf(temp, "%02x", *c);
+        strncpy(s + 2 * i, temp, 2);
+    }
+
+    s[2 * length] = '\0';
+    return s;
+}
+
+/* Timing functions */
 
 #if defined (__x86_64__) || defined(__i386__)
 /* Note: only x86 CPUs which have rdtsc instruction are supported. */
@@ -77,6 +97,45 @@ int compare_double(const void *a, const void *b)
 
 void sort_latencies(double *latencies, size_t count) {
     qsort(latencies, count, sizeof(double), compare_double);
+}
+
+/* OpenSSL hashing functions */
+
+/**
+ * Call malloc() and fill the memory with random data.
+ */
+void *malloc_random(size_t size) {
+    void *buf = malloc(size);
+    if (buf == NULL)
+        return buf;
+
+    srand(time(NULL));
+    for (size_t n = 0; n < size; n++) {
+        *(char *)(buf + n) = rand();
+    }
+
+    return buf;
+}
+
+/**
+ * Calculate the SHA1 digest of the given data.
+ */
+void sha1sum(const void *data, size_t length, unsigned char digest[SHA_DIGEST_LENGTH]) {
+    SHA1(data, length, digest);
+}
+
+/**
+ * Calculate the SHA1 digest of the given array of data.
+ */
+void sha1sum_array(const void *array[], size_t count, size_t length, unsigned char digest[SHA_DIGEST_LENGTH]) {
+    SHA_CTX ctx;
+    SHA1_Init(&ctx);
+    for (size_t n = 0; n < count; n++) {
+        const void *data = array[n];
+        SHA1_Update(&ctx, data, length);
+    }
+
+    SHA1_Final(digest, &ctx);
 }
 
 #endif // DCCS_UTIL_H

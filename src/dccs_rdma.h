@@ -258,7 +258,7 @@ int dccs_rdma_recv_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
 int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, size_t length, size_t count, Verb verb) {
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
-        void *buf = malloc(length);
+        void *buf = malloc_random(length);
 
         request->verb = verb;
         request->buf = buf;
@@ -698,6 +698,29 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
 }
 
 /* Reporting functions */
+
+void print_sha1sum(struct dccs_request *requests, size_t count) {
+    if (count == 0) {
+        sys_error("Failed to calculate SHA1 sum: empty request array.");
+        return;
+    }
+
+    unsigned char digest[SHA_DIGEST_LENGTH];
+
+    size_t length = requests[0].length;
+    void **array = malloc(count * sizeof(void *));
+    for (size_t n = 0; n < count; n++) {
+        struct dccs_request *request = requests + n;
+        array[n] = request->buf;
+    }
+
+    sha1sum_array((const void **)array, count, length, digest);
+    char *digest_hex = bin_to_hex_string(digest, SHA_DIGEST_LENGTH);
+    printf("SHA1 sum: count = %zu, length = %zu, digest = %s.\n", count, length, digest_hex);
+
+    free(digest_hex);
+    free(array);
+}
 
 /**
  * Print latency report.

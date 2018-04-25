@@ -78,6 +78,7 @@ debug("Sending terminating message ...\n");
         goto out_deallocate_buffer;
     }
 
+    print_sha1sum(requests, requests_count);
     print_latency_report(requests, requests_count, clock_rate);
 
 out_deallocate_buffer:

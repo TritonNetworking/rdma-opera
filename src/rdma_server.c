@@ -55,6 +55,8 @@ debug("Waiting for end message ...\n");
         goto out_deallocate_buffer;
     }
 
+    print_sha1sum(requests, requests_count);
+
 out_deallocate_buffer:
     debug("de-allocating buffer\n");
     deallocate_buffer(requests, requests_count);
