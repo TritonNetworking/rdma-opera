@@ -527,7 +527,7 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
     }
 
     uint64_t end = get_cycles();
-    printf("Time elapsed to send all requests: %.3f msec.\n", (double)(end - start) * 1e6 / 2.4e9);
+    printf("Time elapsed to send all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / 2.4e9);
 
     return -failed_count;
 }
@@ -623,7 +623,7 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
     }
 
     uint64_t end = get_cycles();
-    printf("Time elapsed to send and wait all requests: %.3f msec.\n", (double)(end - start) * 1e6 / 2.4e9);
+    printf("Time elapsed to send and wait all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / 2.4e9);
 
     return -failed_count;
 }
@@ -645,7 +645,7 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
     printf("\n=====================\n");
     printf("Report\n\n");
 
-    printf("Raw latency (msec):\n");
+    printf("Raw latency (µsec):\n");
     printf("Start,End,Latency\n");
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
@@ -670,7 +670,7 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
 
     printf("\n");
     printf("Configuration: request length: %zu, # of requests: %zu.\n", requests->length, count);
-    printf("Stats: median: %.3f msec, average: %.3f, min: %.3f msec, max: %.3f msec.\n", median, average, min, max);
+    printf("Stats: median: %.3f µsec, average: %.3f, min: %.3f µsec, max: %.3f µsec.\n", median, average, min, max);
     printf("=====================\n\n");
 
     free(latencies);
