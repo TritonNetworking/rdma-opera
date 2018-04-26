@@ -11,6 +11,8 @@
 #include <time.h>
 #include <openssl/sha.h>
 
+#define USE_RDTSC 0
+
 /* Debug functions */
 
 #define DEBUG 1
@@ -60,47 +62,61 @@ void set_cpu_affinity() {
 /* Note: only x86 CPUs which have rdtsc instruction are supported. */
 static inline uint64_t get_cycles()
 {
+#if USE_RDTSC
     unsigned low, high;
     unsigned long long val;
     asm volatile ("rdtsc" : "=a" (low), "=d" (high));
     val = high;
     val = (val << 32) | low;
     return val;
+#else
+    struct timespec time;
+    clock_gettime(CLOCK_REALTIME, &time);
+    return (uint64_t)time.tv_sec * 1e9 + time.tv_nsec;
+#endif
 }
 
 uint64_t get_clock_rate() {
-  unsigned start_low, start_high, end_low, end_high;
-  uint64_t start, end;
+#if USE_RDTSC
+    unsigned start_low, start_high, end_low, end_high;
+    uint64_t start, end;
 
-  asm volatile ("CPUID\n\t"
-      "RDTSC\n\t"
-      "mov %%edx, %0\n\t"
-      "mov %%eax, %1\n\t": "=r" (start_high), "=r" (start_low)::"%rax", "%rbx", "%rcx", "%rdx"
-  );
+    asm volatile ("CPUID\n\t"
+        "RDTSC\n\t"
+        "mov %%edx, %0\n\t"
+        "mov %%eax, %1\n\t": "=r" (start_high), "=r" (start_low)::"%rax", "%rbx", "%rcx", "%rdx"
+    );
 
-  sleep(1);
+    sleep(1);
 
-  asm volatile ("RDTSCP\n\t"
-      "mov %%edx, %0\n\t"
-      "mov %%eax, %1\n\t"
-      "CPUID\n\t": "=r" (end_high), "=r" (end_low)::"%rax", "%rbx", "%rcx", "%rdx"
-  );
+    asm volatile ("RDTSCP\n\t"
+        "mov %%edx, %0\n\t"
+        "mov %%eax, %1\n\t"
+        "CPUID\n\t": "=r" (end_high), "=r" (end_low)::"%rax", "%rbx", "%rcx", "%rdx"
+    );
 
-  start = ((uint64_t) start_high) << 32 | start_low;
-  end = ((uint64_t) end_high) << 32 | end_low;
+    start = ((uint64_t) start_high) << 32 | start_low;
+    end = ((uint64_t) end_high) << 32 | end_low;
 
-  if (start >= end) {
-    fprintf(stderr, "Invalid rdtsc/rdtscp results %lu, %lu.", end, start);
-    exit(EXIT_FAILURE);
-  } else {
-    return end - start;
-  }
+    if (start >= end) {
+        fprintf(stderr, "Invalid rdtsc/rdtscp results %lu, %lu.", end, start);
+        exit(EXIT_FAILURE);
+    } else {
+        return end - start;
+    }
+#else
+    return (uint64_t)1e9;
+#endif
 }
 
 #endif
 
 double get_time_in_microseconds(uint64_t cycles) {
+#if USE_RDTSC
     return (double)cycles / CPU_CLOCK_RATE * 1e6;
+#else
+    return (double)cycles / 1e3;
+#endif
 }
 
 int compare_double(const void *a, const void *b)
