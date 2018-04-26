@@ -28,6 +28,14 @@ static inline uint64_t ntohll(uint64_t x) { return x; }
 #error __BYTE_ORDER is neither __LITTLE_ENDIAN nor __BIG_ENDIAN
 #endif
 
+extern uint64_t clock_rate;
+
+void dccs_init() {
+    clock_rate = get_clock_rate();
+    debug("Clock rate = %lu.\n", clock_rate);
+    set_cpu_affinity();
+}
+
 /* Connection setup/teardown */
 
 int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *server, char *port) {

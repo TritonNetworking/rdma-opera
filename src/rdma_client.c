@@ -1,5 +1,7 @@
 // RDMA Client
 
+#define _GNU_SOURCE
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -29,8 +31,7 @@ int main(int argc, char *argv[]) {
     size_t requests_length = MESSAGE_LENGTH;
     int rv = 0;
 
-    clock_rate = get_clock_rate();
-    debug("Clock rate = %lu.\n", clock_rate);
+    dccs_init();
 
     if ((rv = dccs_connect(&id, &res, server, port)) != 0)
         goto end;

@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sched.h>
 #include <time.h>
 #include <openssl/sha.h>
 
@@ -42,6 +43,18 @@ char *bin_to_hex_string(void *buf, size_t length) {
 }
 
 /* Timing functions */
+
+#define CPU_TO_USE 0
+
+void set_cpu_affinity() {
+  cpu_set_t set;
+  CPU_ZERO(&set);
+  CPU_SET(CPU_TO_USE, &set);
+  if (sched_setaffinity(0, sizeof(set), &set) == -1) {
+    perror("sched_setaffinity failed");
+    exit(EXIT_FAILURE);
+  }
+}
 
 #if defined (__x86_64__) || defined(__i386__)
 /* Note: only x86 CPUs which have rdtsc instruction are supported. */
