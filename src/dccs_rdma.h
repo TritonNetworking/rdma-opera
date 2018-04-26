@@ -228,8 +228,19 @@ int dccs_rdma_write(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_ad
 int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
     //debug("RDMA send completion ..\n");
-    if ((rv = rdma_get_send_comp(id, wc)) == -1) {
-        perror("rdma_get_send_comp");
+    do {
+        rv = ibv_poll_cq(id->send_cq, 1, wc);
+    } while (rv == 0);
+
+    if (rv < 0) {
+        sys_error("ibv_poll_cq() failed, error = %d.\n", rv);
+        return -1;
+    }
+
+    if (wc->status != IBV_WC_SUCCESS) {
+        sys_error("Failed status %s (%d) for wr_id %d\n",
+            ibv_wc_status_str(wc->status), wc->status, (int)wc->wr_id);
+        return -1;
     }
 
     //debug("RDMA send completion returned %d.\n", rv);
@@ -242,8 +253,19 @@ int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
 int dccs_rdma_recv_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
     //debug("RDMA recv completion ..\n");
-    if ((rv = rdma_get_recv_comp(id, wc)) == -1) {
-        perror("rdma_get_recv_comp");
+    do {
+        rv = ibv_poll_cq(id->recv_cq, 1, wc);
+    } while (rv == 0);
+
+    if (rv < 0) {
+        sys_error("ibv_poll_cq() failed, error = %d.\n", rv);
+        return -1;
+    }
+
+    if (wc->status != IBV_WC_SUCCESS) {
+        sys_error("Failed status %s (%d) for wr_id %d\n",
+            ibv_wc_status_str(wc->status), wc->status, (int)wc->wr_id);
+        return -1;
     }
 
     //debug("RDMA recv completion returned %d.\n", rv);
