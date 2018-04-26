@@ -338,7 +338,7 @@ void deallocate_buffer(struct dccs_request *requests, size_t count) {
 int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, size_t count) {
     struct ibv_mr *mr_count, *mr_array;
     struct ibv_wc wc;
-    int rv;
+    int rv = -1;
 
 #if VERBOSE_TIMING
     uint64_t t = get_cycles();
@@ -438,7 +438,7 @@ out_free_buf:
 int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, size_t count) {
     struct ibv_mr *mr_count, *mr_array;
     struct ibv_wc wc;
-    int rv;
+    int rv = -1;
 
 #if VERBOSE_TIMING
     uint64_t t = get_cycles();
@@ -520,7 +520,7 @@ out_free_buf:
 int send_message(struct rdma_cm_id *id, void* buf, size_t length) {
     struct ibv_mr *mr;
     struct ibv_wc wc;
-    int rv;
+    int rv = -1;
 
     if ((mr = dccs_reg_msgs(id, buf, length)) == NULL)
         goto end;
@@ -543,7 +543,7 @@ end:
 int recv_message(struct rdma_cm_id *id, void* buf, size_t length) {
     struct ibv_mr *mr;
     struct ibv_wc wc;
-    int rv;
+    int rv = -1;
 
     if ((mr = dccs_reg_msgs(id, buf, length)) == NULL)
         goto end;
