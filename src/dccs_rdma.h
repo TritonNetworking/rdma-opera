@@ -752,35 +752,37 @@ void print_sha1sum(struct dccs_request *requests, size_t count) {
     free(array);
 }
 
+void print_raw_latencies(double *latencies, size_t count) {
+    printf("Raw latency (µsec):\n");
+    printf("Start,End,Latency\n");
+    for (size_t n = 0; n < count; n++)
+        printf("%.3f\n", latencies[n]);
+
+    printf("\n");
+}
+
 /**
  * Print latency report.
  */
-void print_latency_report(struct dccs_request *requests, size_t count, uint64_t clock_rate) {
+void print_latency_report(struct dccs_request *requests, size_t count, size_t length, uint64_t clock_rate) {
     double sum = 0;
     double min = DBL_MAX;
     double max = 0;
     double median, average;
+    double percent90, percent99;
 
     double *latencies = malloc(count * sizeof(double));
 
     printf("\n=====================\n");
     printf("Report\n\n");
 
-    if (verbose) {
-        printf("Raw latency (µsec):\n");
-        printf("Start,End,Latency\n");
-    }
-
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         uint64_t elapsed_cycles = request->end - request->start;
-        double start = (double)request->start * 1e6 / clock_rate;
-        double end = (double)request->end * 1e6 / clock_rate;
+        // double start = (double)request->start * 1e6 / clock_rate;
+        // double end = (double)request->end * 1e6 / clock_rate;
         double latency = (double)elapsed_cycles * 1e6 / clock_rate;
         latencies[n] = latency;
-        if (verbose)
-            printf("%.3f,%.3f,%.3f\n", start, end, latency);
-
         sum += latency;
         if (latency > max)
             max = latency;
@@ -789,14 +791,17 @@ void print_latency_report(struct dccs_request *requests, size_t count, uint64_t 
     }
 
     if (verbose)
-        printf("\n");
+        print_raw_latencies(latencies, count);
 
     sort_latencies(latencies, count);
     median = latencies[count / 2];
+    percent90 = latencies[(int)(count * 0.9)];
+    percent99 = latencies[(int)(count * 0.99)];
     average = sum / count;
 
     printf("Configuration: request length: %zu, # of requests: %zu.\n", requests->length, count);
-    printf("Stats: median: %.3f µsec, average: %.3f, min: %.3f µsec, max: %.3f µsec.\n", median, average, min, max);
+    printf("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
+    printf("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", length, count, median, average, min, max, percent90, percent99);
     printf("=====================\n\n");
 
     free(latencies);

@@ -121,7 +121,15 @@ double get_time_in_microseconds(uint64_t cycles) {
 
 int compare_double(const void *a, const void *b)
 {
-    return (*(double*)a - *(double*)b);
+    double da = *(double *)a;
+    double db = *(double *)b;
+    if (da < db) {
+        return -1;
+    } else if (da > db) {
+        return 1;
+    } else {
+        return 0;
+    }
 }
 
 void sort_latencies(double *latencies, size_t count) {
