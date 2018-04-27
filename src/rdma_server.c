@@ -17,34 +17,33 @@
 #include "dccs_parameters.h"
 #include "dccs_rdma.h"
 
-char *port = "1234";
-
 uint64_t clock_rate = 0;
 
 int main(int argc, char *argv[]) {
     struct rdma_cm_id *listen_id, *id;
     struct rdma_addrinfo *res;
     struct dccs_request *requests;
-    size_t requests_count = MESSAGE_COUNT;
-    size_t requests_length = MESSAGE_LENGTH;
+    struct dccs_parameters params;
     int rv = 0;
 
+    parse_args(argc, argv, &params);
+    print_parameters(&params);
     dccs_init();
 
-    if ((rv = dccs_listen(&listen_id, &id, &res, port)) != 0)
+    if ((rv = dccs_listen(&listen_id, &id, &res, params.port)) != 0)
         goto end;
 
 debug("Allocating buffer ...\n");
-    size_t requests_size = requests_count * sizeof(struct dccs_request);
+    size_t requests_size = params.count * sizeof(struct dccs_request);
     requests = malloc(requests_size);
     memset(requests, 0, requests_size);
-    if ((rv = allocate_buffer(id, requests, requests_length, requests_count, Read)) != 0) {
+    if ((rv = allocate_buffer(id, requests, params.length, params.count, Read)) != 0) {
         sys_error("Failed to allocate buffers.\n");
         goto out_disconnect;
     }
 
 debug("Sending local MR info ...\n");
-    if ((rv = send_local_mr_info(id, requests, requests_count)) < 0) {
+    if ((rv = send_local_mr_info(id, requests, params.count)) < 0) {
         sys_error("Failed to get remote MR info.\n");
         goto out_deallocate_buffer;
     }
@@ -56,11 +55,11 @@ debug("Waiting for end message ...\n");
         goto out_deallocate_buffer;
     }
 
-    print_sha1sum(requests, requests_count);
+    print_sha1sum(requests, params.count);
 
 out_deallocate_buffer:
     debug("de-allocating buffer\n");
-    deallocate_buffer(requests, requests_count);
+    deallocate_buffer(requests, params.count);
 out_disconnect:
     debug("Disconnecting\n");
     dccs_server_disconnect(id, listen_id, res);

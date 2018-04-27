@@ -17,7 +17,10 @@ struct dccs_mr_info{
 
 struct dccs_parameters {
     Verb verb;
-
+    size_t count;
+    size_t length;
+    char *server;
+    char *port;
 };
 
 struct dccs_request {
