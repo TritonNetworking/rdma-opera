@@ -13,6 +13,8 @@
 
 #define USE_RDTSC 0
 
+#define BILLION 1000000000UL
+
 /* Debug functions */
 
 #define DEBUG 1
@@ -24,7 +26,7 @@ void debug_bin(void *buf, size_t length) {
 #if DEBUG
     unsigned char *c;
     for (size_t i = 0; i < length; i++) {
-        c = buf + i;
+        c = (unsigned char *)buf + i;
         fprintf(stderr, "%02x", *c);
     }
 #endif
@@ -72,7 +74,7 @@ static inline uint64_t get_cycles()
 #else
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
-    return (uint64_t)time.tv_sec * 1e9 + time.tv_nsec;
+    return (uint64_t)time.tv_sec * BILLION + (uint64_t)time.tv_nsec;
 #endif
 }
 
@@ -105,7 +107,7 @@ uint64_t get_clock_rate() {
         return end - start;
     }
 #else
-    return (uint64_t)1e9;
+    return (uint64_t)BILLION;
 #endif
 }
 
@@ -146,9 +148,9 @@ void *malloc_random(size_t size) {
     if (buf == NULL)
         return buf;
 
-    srand(time(NULL));
+    srand((unsigned int)time(NULL));
     for (size_t n = 0; n < size; n++) {
-        *(char *)(buf + n) = rand();
+        *((char *)buf + n) = (char)rand();
     }
 
     return buf;

@@ -18,6 +18,8 @@
 
 bool verbose = false;
 
+#define MILLION 1000000UL
+
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
 static inline uint64_t ntohll(uint64_t x) { return bswap_64(x); }
@@ -779,9 +781,9 @@ void print_latency_report(struct dccs_request *requests, size_t count, size_t le
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         uint64_t elapsed_cycles = request->end - request->start;
-        // double start = (double)request->start * 1e6 / clock_rate;
-        // double end = (double)request->end * 1e6 / clock_rate;
-        double latency = (double)elapsed_cycles * 1e6 / clock_rate;
+        // double start = (double)request->start * MILLION / (double)clock_rate;
+        // double end = (double)request->end * MILLION / (double)clock_rate;
+        double latency = (double)elapsed_cycles * MILLION / (double)clock_rate;
         latencies[n] = latency;
         sum += latency;
         if (latency > max)
@@ -795,9 +797,9 @@ void print_latency_report(struct dccs_request *requests, size_t count, size_t le
 
     sort_latencies(latencies, count);
     median = latencies[count / 2];
-    percent90 = latencies[(int)(count * 0.9)];
-    percent99 = latencies[(int)(count * 0.99)];
-    average = sum / count;
+    percent90 = latencies[(int)((double)count * 0.9)];
+    percent99 = latencies[(int)((double)count * 0.99)];
+    average = sum / (double)count;
 
     printf("Configuration: request length: %zu, # of requests: %zu.\n", requests->length, count);
     printf("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
