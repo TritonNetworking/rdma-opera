@@ -40,7 +40,7 @@ void dccs_init() {
 }
 
 void print_usage(char *argv0) {
-    printf("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-V {verbose}] [server]", argv0);
+    printf("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-V {verbose}] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
@@ -869,7 +869,7 @@ void print_raw_latencies(double *latencies, size_t count) {
 /**
  * Print latency report.
  */
-void print_latency_report(struct dccs_request *requests, size_t count, size_t length, uint64_t clock_rate) {
+void print_latency_report(struct dccs_request *requests, size_t count, size_t length) {
     double sum = 0;
     double min = DBL_MAX;
     double max = 0;

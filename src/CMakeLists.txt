@@ -13,14 +13,9 @@ set(HEADER_FILES
         dccs_rdma.h
         utils.h)
 
-add_executable(rdma_client
+add_executable(rdma_exec
         ${HEADER_FILES}
-        rdma_client.c)
+        rdma_main.c)
 
-add_executable(rdma_server
-        ${HEADER_FILES}
-        rdma_server.c)
-
-target_link_libraries(rdma_client ssl crypto ibverbs rdmacm)
-target_link_libraries(rdma_server ssl crypto ibverbs rdmacm)
+target_link_libraries(rdma_exec ssl crypto ibverbs rdmacm)
 

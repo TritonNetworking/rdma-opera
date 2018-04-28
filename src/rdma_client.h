@@ -1,13 +1,10 @@
 // RDMA Client
 
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 #include <errno.h>
-#include <getopt.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <rdma/rdma_cma.h>
@@ -18,23 +15,11 @@
 #include "dccs_parameters.h"
 #include "dccs_rdma.h"
 
-uint64_t clock_rate = 0;
-
-int main(int argc, char *argv[]) {
+int run_client(struct dccs_parameters params) {
     struct rdma_cm_id *id;
     struct rdma_addrinfo *res;
     struct dccs_request *requests;
-    struct dccs_parameters params;
     int rv = 0;
-
-    parse_args(argc, argv, &params);
-    print_parameters(&params);
-    if (params.server == NULL) {
-        sys_error("Server not specified.\n");
-        exit(EXIT_FAILURE);
-    }
-
-    dccs_init();
 
     if ((rv = dccs_connect(&id, &res, params.server, params.port)) != 0)
         goto end;
@@ -83,7 +68,7 @@ debug("Sending terminating message ...\n");
     }
 
     print_sha1sum(requests, params.count);
-    print_latency_report(requests, params.count, params.length, clock_rate);
+    print_latency_report(requests, params.count, params.length);
 
 out_deallocate_buffer:
     debug("de-allocating buffer\n");

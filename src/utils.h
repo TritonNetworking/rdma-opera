@@ -5,9 +5,11 @@
 #ifndef DCCS_UTIL_H
 #define DCCS_UTIL_H
 
+#include <sched.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sched.h>
+#include <string.h>
 #include <time.h>
 #include <openssl/sha.h>
 

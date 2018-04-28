@@ -1,12 +1,9 @@
 // RDMA Server
 
-#define _GNU_SOURCE
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <getopt.h>
 #include <netdb.h>
 #include <unistd.h>
 #include <rdma/rdma_cma.h>
@@ -17,18 +14,11 @@
 #include "dccs_parameters.h"
 #include "dccs_rdma.h"
 
-uint64_t clock_rate = 0;
-
-int main(int argc, char *argv[]) {
+int run_server(struct dccs_parameters params) {
     struct rdma_cm_id *listen_id, *id;
     struct rdma_addrinfo *res;
     struct dccs_request *requests;
-    struct dccs_parameters params;
     int rv = 0;
-
-    parse_args(argc, argv, &params);
-    print_parameters(&params);
-    dccs_init();
 
     if ((rv = dccs_listen(&listen_id, &id, &res, params.port)) != 0)
         goto end;
