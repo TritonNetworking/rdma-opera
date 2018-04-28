@@ -57,7 +57,7 @@ void print_parameters(struct dccs_parameters *params) {
             break;
     }
 
-    printf("verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
+    printf("[Config] verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
 }
 
 /**
@@ -79,7 +79,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
             { "repeat", required_argument, 0, 'r' },
             { "verb", required_argument, 0, 'v' },
             { "port", required_argument, 0, 'p' },
-            { "verbose", no_argument, &verbose, 'V' },
+            { "verbose", no_argument, 0, 'V' },
             { "help", no_argument, 0, 'h' }
         };
 
@@ -115,6 +115,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 params->port = optarg;
                 break;
             case 'V':
+                verbose = 1;
                 break;
             case 'h':
                 print_usage(argv[0]);
@@ -903,7 +904,6 @@ void print_latency_report(struct dccs_request *requests, size_t count, size_t le
     percent99 = latencies[(int)((double)count * 0.99)];
     average = sum / (double)count;
 
-    printf("Configuration: request length: %zu, # of requests: %zu.\n", requests->length, count);
     printf("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
     printf("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", length, count, median, average, min, max, percent90, percent99);
     printf("=====================\n\n");
