@@ -9,6 +9,7 @@
 #include <errno.h>
 #include <float.h>
 #include <getopt.h>
+#include <math.h>
 #include <stdbool.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
@@ -873,7 +874,7 @@ void print_latency_report(struct dccs_request *requests, size_t count, size_t le
     double sum = 0;
     double min = DBL_MAX;
     double max = 0;
-    double median, average;
+    double median, average, stdev, sumsq;
     double percent90, percent99;
 
     double *latencies = malloc(count * sizeof(double));
@@ -904,8 +905,16 @@ void print_latency_report(struct dccs_request *requests, size_t count, size_t le
     percent99 = latencies[(int)((double)count * 0.99)];
     average = sum / (double)count;
 
+    sumsq = 0;
+    for (size_t n = 0; n < count; n++) {
+        double latency = latencies[n];
+        sumsq += pow((latency - average), 2);
+    }
+
+    stdev = sqrt(sumsq / (double)count);
+
     printf("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
-    printf("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", length, count, median, average, min, max, percent90, percent99);
+    printf("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", length, count, median, average, min, max, stdev, percent90, percent99);
     printf("=====================\n\n");
 
     free(latencies);

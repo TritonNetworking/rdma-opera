@@ -17,5 +17,5 @@ add_executable(rdma_exec
         ${HEADER_FILES}
         rdma_main.c)
 
-target_link_libraries(rdma_exec ssl crypto ibverbs rdmacm)
+target_link_libraries(rdma_exec m ssl crypto ibverbs rdmacm)
 
