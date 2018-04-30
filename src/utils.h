@@ -146,7 +146,14 @@ void sort_latencies(double *latencies, size_t count) {
  * Call malloc() and fill the memory with random data.
  */
 void *malloc_random(size_t size) {
-    void *buf = malloc(size);
+    void *buf;
+
+    if (posix_memalign(&buf, CACHE_LINE_SIZE, size) != 0) {
+        perror("posix_memalign");
+        sys_warning("Failed to malloc aligned memory, falling back to malloc() ...\n");
+        buf = malloc(size);
+    }
+
     if (buf == NULL)
         return buf;
 
