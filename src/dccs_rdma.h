@@ -871,6 +871,7 @@ void print_raw_latencies(double *latencies, size_t count) {
  * Print latency report.
  */
 void print_latency_report(struct dccs_request *requests, size_t count, size_t length) {
+    int time_per_round = 200;
     double sum = 0;
     double min = DBL_MAX;
     double max = 0;
@@ -882,12 +883,18 @@ void print_latency_report(struct dccs_request *requests, size_t count, size_t le
     printf("\n=====================\n");
     printf("Report\n\n");
 
+    double first_start = (double)requests[0].start * MILLION / (double)clock_rate;
+    int finished_count = 0;
+
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         uint64_t elapsed_cycles = request->end - request->start;
-        // double start = (double)request->start * MILLION / (double)clock_rate;
-        // double end = (double)request->end * MILLION / (double)clock_rate;
+        double start = (double)request->start * MILLION / (double)clock_rate;
+        double end = (double)request->end * MILLION / (double)clock_rate;
         double latency = (double)elapsed_cycles * MILLION / (double)clock_rate;
+        if (end - first_start <= DCCS_CYCLE_UPTIME)
+            finished_count++;
+
         latencies[n] = latency;
         sum += latency;
         if (latency > max)
@@ -915,6 +922,7 @@ void print_latency_report(struct dccs_request *requests, size_t count, size_t le
 
     printf("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
     printf("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", length, count, median, average, min, max, stdev, percent90, percent99);
+    printf("# of requests sent in %d µsec: %d.\n", DCCS_CYCLE_UPTIME, finished_count);
     printf("=====================\n\n");
 
     free(latencies);
