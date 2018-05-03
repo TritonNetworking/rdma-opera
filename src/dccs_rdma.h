@@ -586,7 +586,7 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
                     failed_count++;
                 break;
             default:
-                printf("Unrecognized request (n = %zu).", n);
+                log_warning("Unrecognized request (n = %zu).", n);
                 break;
         }
     }
@@ -615,13 +615,13 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
                     failed_count++;
                 break;
             default:
-                printf("Unrecognized request (n = %zu).", n);
+                log_warning("Unrecognized request (n = %zu).", n);
                 break;
         }
     }
 
     uint64_t end = get_cycles();
-    printf("Time elapsed to send all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / 2.4e9);
+    log_debug("Time elapsed to send all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / 2.4e9);
 
     return -failed_count;
 }
@@ -672,7 +672,7 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
                     failed_count++;
                 break;
             default:
-                printf("Unrecognized request (n = %zu).", n);
+                log_warning("Unrecognized request (n = %zu).", n);
                 break;
         }
     }
@@ -703,7 +703,7 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
                     failed = true;
                 break;
             default:
-                printf("Unrecognized request (n = %zu).", n);
+                log_warning("Unrecognized request (n = %zu).", n);
                 break;
         }
 
@@ -717,7 +717,7 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
     }
 
     uint64_t end = get_cycles();
-    printf("Time elapsed to send and wait all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / 2.4e9);
+    log_debug("Time elapsed to send and wait all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / 2.4e9);
 
     return -failed_count;
 }
@@ -741,19 +741,19 @@ void print_sha1sum(struct dccs_request *requests, size_t count) {
 
     sha1sum_array((const void **)array, count, length, digest);
     char *digest_hex = bin_to_hex_string(digest, SHA_DIGEST_LENGTH);
-    printf("SHA1 sum: count = %zu, length = %zu, digest = %s.\n", count, length, digest_hex);
+    log_info("SHA1 sum: count = %zu, length = %zu, digest = %s.\n", count, length, digest_hex);
 
     free(digest_hex);
     free(array);
 }
 
 void print_raw_latencies(double *latencies, size_t count) {
-    printf("Raw latency (µsec):\n");
-    printf("Start,End,Latency\n");
+    log_info("Raw latency (µsec):\n");
+    log_info("Start,End,Latency\n");
     for (size_t n = 0; n < count; n++)
-        printf("%.3f\n", latencies[n]);
+        log_info("%.3f\n", latencies[n]);
 
-    printf("\n");
+    log_info("\n");
 }
 
 /**
@@ -772,8 +772,8 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
 
     double *latencies = malloc(count * sizeof(double));
 
-    printf("\n=====================\n");
-    printf("Report\n\n");
+    log_info("=====================\n");
+    log_info("Latency Report\n");
 
     double first_start = (double)requests[0].start * MILLION / (double)clock_rate;
     int finished_count = 0;
@@ -812,10 +812,10 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
 
     stdev = sqrt(sumsq / (double)count);
 
-    printf("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
-    printf("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", length, count, median, average, min, max, stdev, percent90, percent99);
-    printf("# of requests sent in %d µsec: %d.\n", DCCS_CYCLE_UPTIME, finished_count);
-    printf("=====================\n\n");
+    log_info("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
+    log_info("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", length, count, median, average, min, max, stdev, percent90, percent99);
+    log_info("# of requests sent in %d µsec: %d.\n", DCCS_CYCLE_UPTIME, finished_count);
+    log_info("=====================\n\n");
 
     free(latencies);
 }

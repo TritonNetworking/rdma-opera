@@ -225,7 +225,7 @@ void set_cpu_affinity() {
 }
 
 void print_usage(char *argv0) {
-    printf("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-V {verbose}] [server]\n", argv0);
+    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-V {verbose}] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
@@ -242,7 +242,7 @@ void print_parameters(struct dccs_parameters *params) {
             break;
     }
 
-    printf("[Config] verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
+    log_info("Config: verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
 }
 
 /**

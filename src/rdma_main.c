@@ -22,10 +22,10 @@ int main(int argc, char *argv[]) {
     dccs_init();
 
     if (params.server == NULL) {
-        printf("Running in server mode ...\n");
+        log_info("Running in server mode ...\n");
         rv = run_server(params);
     } else {
-        printf("Running in client mode ...\n");
+        log_info("Running in client mode ...\n");
         rv = run_client(params);
     }
 
