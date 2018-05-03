@@ -68,7 +68,7 @@ debug("Sending terminating message ...\n");
     }
 
     print_sha1sum(requests, params.count);
-    print_latency_report(requests, params.count, params.length);
+    print_latency_report(&params, requests);
 
 out_deallocate_buffer:
     debug("de-allocating buffer\n");

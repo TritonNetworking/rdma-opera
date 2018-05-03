@@ -8,18 +8,16 @@
 #include <byteswap.h>
 #include <errno.h>
 #include <float.h>
-#include <getopt.h>
 #include <math.h>
 #include <stdbool.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
 #include "dccs_utils.h"
+#include "dccs_parameters.h"
 
 #define MAX_WR 1000
 #define VERBOSE_TIMING 1
-
-int verbose = 0;
 
 #define MILLION 1000000UL
 
@@ -32,116 +30,6 @@ static inline uint64_t ntohll(uint64_t x) { return x; }
 #else
 #error __BYTE_ORDER is neither __LITTLE_ENDIAN nor __BIG_ENDIAN
 #endif
-
-extern uint64_t clock_rate;
-
-void dccs_init() {
-    clock_rate = get_clock_rate();
-    debug("Clock rate = %lu.\n", clock_rate);
-    set_cpu_affinity();
-}
-
-void print_usage(char *argv0) {
-    printf("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-V {verbose}] [server]\n", argv0);
-}
-
-void print_parameters(struct dccs_parameters *params) {
-    char *verb;
-    switch (params->verb) {
-        case Read:
-            verb = "Read";
-            break;
-        case Write:
-            verb = "Write";
-            break;
-        default:
-            verb = "Unknown";
-            break;
-    }
-
-    printf("[Config] verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
-}
-
-/**
- * Parse command line arguments.
- */
-void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
-    int c;
-
-    memset(params, 0,  sizeof(struct dccs_parameters));
-    params->verb = Read;
-    params->count = DEFAULT_MESSAGE_COUNT;
-    params->length = DEFAULT_MESSAGE_LENGTH;
-    params->server = NULL;
-    params->port = DEFAULT_PORT;
-
-    while (true) {
-        static struct option long_options[] = {
-            { "block_size", required_argument, 0, 'b' },
-            { "repeat", required_argument, 0, 'r' },
-            { "verb", required_argument, 0, 'v' },
-            { "port", required_argument, 0, 'p' },
-            { "verbose", no_argument, 0, 'V' },
-            { "help", no_argument, 0, 'h' }
-        };
-
-        c = getopt_long(argc, argv, "b:r:v:p:Vh", long_options, NULL);
-        if (c == -1)
-            break;
-
-        switch (c) {
-            case 'b':
-                if (sscanf(optarg, "%zu", &(params->length)) != 1) {
-                    goto invalid;
-                }
-
-                break;
-            case 'r':
-                if (sscanf(optarg, "%zu", &(params->count)) != 1) {
-                    goto invalid;
-                }
-
-                break;
-            case 'v':
-                if (strcmp(optarg, "read") == 0) {
-                    params->verb = Read;
-                } else if (strcmp(optarg, "write") == 0) {
-                    params->verb = Write;
-                } else {
-                    print_usage(argv[0]);
-                    exit(EXIT_FAILURE);
-                }
-
-                break;
-            case 'p':
-                params->port = optarg;
-                break;
-            case 'V':
-                verbose = 1;
-                break;
-            case 'h':
-                print_usage(argv[0]);
-                exit(EXIT_SUCCESS);
-                break;
-            default:
-                sys_error("Unrecognized option '%c'.\n", c);
-                print_usage(argv[0]);
-                exit(EXIT_FAILURE);
-                break;
-        }
-    }
-
-    if (optind + 1 == argc) {
-        params->server = argv[optind];
-    }
-
-    return;
-
-invalid:
-    sys_error("Unrecognized option value '%s' for option '%c'\n", optarg, c);
-    print_usage(argv[0]);
-    exit(EXIT_FAILURE);
-}
 
 /* Connection setup/teardown */
 
@@ -871,13 +759,16 @@ void print_raw_latencies(double *latencies, size_t count) {
 /**
  * Print latency report.
  */
-void print_latency_report(struct dccs_request *requests, size_t count, size_t length) {
+void print_latency_report(struct dccs_parameters *params, struct dccs_request *requests) {
     int time_per_round = 200;
     double sum = 0;
     double min = DBL_MAX;
     double max = 0;
     double median, average, stdev, sumsq;
     double percent90, percent99;
+
+    size_t count = params->count;
+    size_t length = params->length;
 
     double *latencies = malloc(count * sizeof(double));
 
@@ -904,7 +795,7 @@ void print_latency_report(struct dccs_request *requests, size_t count, size_t le
             min = latency;
     }
 
-    if (verbose)
+    if (params->verbose)
         print_raw_latencies(latencies, count);
 
     sort_latencies(latencies, count);

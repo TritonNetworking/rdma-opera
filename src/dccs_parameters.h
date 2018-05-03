@@ -21,6 +21,8 @@ struct dccs_parameters {
     size_t length;
     char *server;
     char *port;
+
+    bool verbose;
 };
 
 struct dccs_request {
