@@ -344,7 +344,7 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     memset(mr_infos, 0, array_size);
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -355,7 +355,7 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
         goto out_dereg_mr_count;
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to regiser MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to regiser MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -371,7 +371,7 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to receive count: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to receive count: %.3f µsec.\n", get_time_in_microseconds(t));
 #endif
 
     if (rcount != count) {
@@ -394,7 +394,7 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to receive MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to receive MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -407,7 +407,7 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to copy MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to copy MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -421,7 +421,7 @@ out_free_buf:
 
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
 #endif
 
     return rv;
@@ -450,7 +450,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -460,7 +460,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
         goto out_dereg_mr_count;
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to register MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to register MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -475,7 +475,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to send count: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to send count: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -490,7 +490,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to send MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to send MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -504,7 +504,7 @@ out_free_buf:
 
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    log_debug("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_verbose("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
 #endif
 
     return rv;

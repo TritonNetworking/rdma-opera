@@ -15,5 +15,6 @@ while [[ $l -le $limit ]]; do
     echo "Length = $l ..."
     ../build/rdma_exec -b $l -r $count -v $verb $server
     (( l *= 2 ))
+    echo ""
 done
 
