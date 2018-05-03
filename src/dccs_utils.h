@@ -8,6 +8,7 @@
 #include <getopt.h>
 #include <openssl/sha.h>
 #include <sched.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -26,18 +27,84 @@ extern uint64_t clock_rate;
 /* Debug functions */
 
 #define DEBUG 1
-#define debug(...) if (DEBUG) fprintf(stderr, __VA_ARGS__)
-#define sys_error(...) fprintf(stderr, __VA_ARGS__)
-#define sys_warning(...) fprintf(stderr, __VA_ARGS__)
 
-void debug_bin(void *buf, size_t length) {
+#define LOG_VERBOSE 0
+#define LOG_INFO 1
+#define LOG_DEBUG 2
+#define LOG_WARNING 3
+#define LOG_ERROR 4
+
+void vlog_level(int level, const char *format, va_list arg) {
+    switch (level) {
+        case LOG_VERBOSE:
+            fprintf(stderr, "[VERBOSE] ");
+            vfprintf(stderr, format, arg);
+            break;
+        case LOG_INFO:
+            fprintf(stderr, "[INFO] ");
+            vfprintf(stderr, format, arg);
+            break;
+        case LOG_DEBUG:
 #if DEBUG
-    unsigned char *c;
-    for (size_t i = 0; i < length; i++) {
-        c = (unsigned char *)buf + i;
-        fprintf(stderr, "%02x", *c);
-    }
+            fprintf(stderr, "[DEBUG] ");
+            vfprintf(stderr, format, arg);
 #endif
+            break;
+        case LOG_WARNING:
+            fprintf(stderr, "[WARN] ");
+            vfprintf(stderr, format, arg);
+            break;
+        case LOG_ERROR:
+            fprintf(stderr, "[ERROR] ");
+            vfprintf(stderr, format, arg);
+            break;
+        default:
+            fprintf(stderr, "[%d] ", level);
+            vfprintf(stderr, format, arg);
+            break;
+    }
+}
+
+void llog(int level, const char *format, ...) {
+    va_list arg;
+    va_start(arg, format);
+    vlog_level(level, format, arg);
+    va_end(arg);
+}
+
+void log_verbose(const char *format, ...) {
+    va_list arg;
+    va_start(arg, format);
+    vlog_level(LOG_VERBOSE, format, arg);
+    va_end(arg);
+}
+
+void log_info(const char *format, ...) {
+    va_list arg;
+    va_start(arg, format);
+    vlog_level(LOG_INFO, format, arg);
+    va_end(arg);
+}
+
+void log_debug(const char *format, ...) {
+    va_list arg;
+    va_start(arg, format);
+    vlog_level(LOG_DEBUG, format, arg);
+    va_end(arg);
+}
+
+void log_warning(const char *format, ...) {
+    va_list arg;
+    va_start(arg, format);
+    vlog_level(LOG_WARNING, format, arg);
+    va_end(arg);
+}
+
+void log_error(const char *format, ...) {
+    va_list arg;
+    va_start(arg, format);
+    vlog_level(LOG_ERROR, format, arg);
+    va_end(arg);
 }
 
 char *bin_to_hex_string(void *buf, size_t length) {
@@ -231,7 +298,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 exit(EXIT_SUCCESS);
                 break;
             default:
-                sys_error("Unrecognized option '%c'.\n", c);
+                log_error("Unrecognized option '%c'.\n", c);
                 print_usage(argv[0]);
                 exit(EXIT_FAILURE);
                 break;
@@ -245,14 +312,14 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     return;
 
 invalid:
-    sys_error("Unrecognized option value '%s' for option '%c'\n", optarg, c);
+    log_error("Unrecognized option value '%s' for option '%c'\n", optarg, c);
     print_usage(argv[0]);
     exit(EXIT_FAILURE);
 }
 
 void dccs_init() {
     clock_rate = get_clock_rate();
-    debug("Clock rate = %lu.\n", clock_rate);
+    log_debug("Clock rate = %lu.\n", clock_rate);
     set_cpu_affinity();
 }
 
@@ -264,7 +331,7 @@ void *malloc_random(size_t size) {
 
     if (posix_memalign(&buf, CACHE_LINE_SIZE, size) != 0) {
         perror("posix_memalign");
-        sys_warning("Failed to malloc aligned memory, falling back to malloc() ...\n");
+        log_warning("Failed to malloc aligned memory, falling back to malloc() ...\n");
         buf = malloc(size);
     }
 

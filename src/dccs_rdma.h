@@ -179,47 +179,47 @@ int dccs_rdma_send(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_
     int rv;
     int flags = 0; //IBV_SEND_INLINE;    // TODO: check if possible
     flags |= IBV_SEND_SIGNALED;
-    //debug("RDMA send ...\n");
+    //log_debug("RDMA send ...\n");
     if ((rv = rdma_post_send(id, NULL, addr, length, mr, flags)) != 0) {
         perror("rdma_post_send");
     }
 
-    //debug("RDMA send returned %d.\n", rv);
+    //log_debug("RDMA send returned %d.\n", rv);
     return rv;
 }
 
 int dccs_rdma_recv(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr) {
     int rv;
-    //debug("RDMA recv ...\n");
+    //log_debug("RDMA recv ...\n");
     if ((rv = rdma_post_recv(id, NULL, addr, length, mr)) != 0) {
         perror("rdma_post_recv");
     }
 
-    //debug("RDMA recv returned %d.\n", rv);
+    //log_debug("RDMA recv returned %d.\n", rv);
     return rv;
 }
 
 int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
     int rv;
     int flags = IBV_SEND_SIGNALED;
-    //debug("RDMA read ...\n");
+    //log_debug("RDMA read ...\n");
     if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
         perror("rdma_post_read");
     }
 
-    //debug("RDMA read returned %d.\n", rv);
+    //log_debug("RDMA read returned %d.\n", rv);
     return rv;
 }
 
 int dccs_rdma_write(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
     int rv;
     int flags = IBV_SEND_SIGNALED;
-    debug("RDMA write ...\n");
+    log_debug("RDMA write ...\n");
     if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
         perror("rdma_post_write");
     }
 
-    debug("RDMA write returned %d.\n", rv);
+    log_debug("RDMA write returned %d.\n", rv);
     return rv;
 }
 
@@ -230,23 +230,23 @@ int dccs_rdma_write(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_ad
  */
 int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
-    //debug("RDMA send completion ..\n");
+    //log_debug("RDMA send completion ..\n");
     do {
         rv = ibv_poll_cq(id->send_cq, 1, wc);
     } while (rv == 0);
 
     if (rv < 0) {
-        sys_error("ibv_poll_cq() failed, error = %d.\n", rv);
+        log_error("ibv_poll_cq() failed, error = %d.\n", rv);
         return -1;
     }
 
     if (wc->status != IBV_WC_SUCCESS) {
-        sys_error("Failed status %s (%d) for wr_id %d\n",
+        log_error("Failed status %s (%d) for wr_id %d\n",
             ibv_wc_status_str(wc->status), wc->status, (int)wc->wr_id);
         return -1;
     }
 
-    //debug("RDMA send completion returned %d.\n", rv);
+    //log_debug("RDMA send completion returned %d.\n", rv);
     return rv;
 }
 
@@ -255,23 +255,23 @@ int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
  */
 int dccs_rdma_recv_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
     int rv;
-    //debug("RDMA recv completion ..\n");
+    //log_debug("RDMA recv completion ..\n");
     do {
         rv = ibv_poll_cq(id->recv_cq, 1, wc);
     } while (rv == 0);
 
     if (rv < 0) {
-        sys_error("ibv_poll_cq() failed, error = %d.\n", rv);
+        log_error("ibv_poll_cq() failed, error = %d.\n", rv);
         return -1;
     }
 
     if (wc->status != IBV_WC_SUCCESS) {
-        sys_error("Failed status %s (%d) for wr_id %d\n",
+        log_error("Failed status %s (%d) for wr_id %d\n",
             ibv_wc_status_str(wc->status), wc->status, (int)wc->wr_id);
         return -1;
     }
 
-    //debug("RDMA recv completion returned %d.\n", rv);
+    //log_debug("RDMA recv completion returned %d.\n", rv);
     return rv;
 }
 
@@ -300,7 +300,7 @@ int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, size_t
                 request->mr = dccs_reg_write(id, buf, length);
                 break;
             default:
-                sys_error("Unrecognized verb for request %zu.\n", n);
+                log_error("Unrecognized verb for request %zu.\n", n);
                 break;
         }
 
@@ -344,7 +344,7 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     memset(mr_infos, 0, array_size);
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -355,27 +355,27 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
         goto out_dereg_mr_count;
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to regiser MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to regiser MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
     // Receive count
     if ((rv = dccs_rdma_recv(id, &rcount, sizeof rcount, mr_count)) != 0) {
-        sys_error("Failed to recv # of RDMA requests to remote side.\n");
+        log_error("Failed to recv # of RDMA requests to remote side.\n");
         goto failure;
     }
     while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
     if (rv < 0) {
-        sys_error("Failed to recv comp # of RDMA requests to remote side.\n");
+        log_error("Failed to recv comp # of RDMA requests to remote side.\n");
         goto failure;
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to receive count: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to receive count: %.3f µsec.\n", get_time_in_microseconds(t));
 #endif
 
     if (rcount != count) {
-        sys_error("Inconsistent request count: local is %zu, remote is %zu.\n", count, rcount);
+        log_error("Inconsistent request count: local is %zu, remote is %zu.\n", count, rcount);
         goto failure;
     }
 
@@ -384,17 +384,17 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
 #endif
     // Receive RDMA read/write info
     if ((rv = dccs_rdma_recv(id, mr_infos, array_size, mr_array)) != 0) {
-        sys_error("Failed to recv RDMA read/write request info to remote side.\n");
+        log_error("Failed to recv RDMA read/write request info to remote side.\n");
         goto failure;
     }
     while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
     if (rv < 0) {
-        sys_error("Failed to recv comp RDMA read/write request info to remote side.\n");
+        log_error("Failed to recv comp RDMA read/write request info to remote side.\n");
         goto failure;
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to receive MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to receive MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -407,7 +407,7 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to copy MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to copy MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -421,7 +421,7 @@ out_free_buf:
 
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
 #endif
 
     return rv;
@@ -450,7 +450,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to allocate MR structs: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -460,37 +460,37 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
         goto out_dereg_mr_count;
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to register MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to register MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
     if ((rv = dccs_rdma_send(id, &count, sizeof count, mr_count)) != 0) {
-        sys_error("Failed to send # of RDMA requests to remote side.\n");
+        log_error("Failed to send # of RDMA requests to remote side.\n");
         goto failure;
     }
     while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
     if (rv < 0) {
-        sys_error("Failed to send comp # of RDMA requests to remote side.\n");
+        log_error("Failed to send comp # of RDMA requests to remote side.\n");
         goto failure;
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to send count: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to send count: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
     if ((rv = dccs_rdma_send(id, mr_infos, array_size, mr_array)) != 0) {
-        sys_error("Failed to send RDMA read/write request info to remote side.\n");
+        log_error("Failed to send RDMA read/write request info to remote side.\n");
         goto failure;
     }
     while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
     if (rv < 0) {
-        sys_error("Failed to send comp RDMA read/write request info to remote side.\n");
+        log_error("Failed to send comp RDMA read/write request info to remote side.\n");
         goto failure;
     }
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to send MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to send MR infos: %.3f µsec.\n", get_time_in_microseconds(t));
 
     t = get_cycles();
 #endif
@@ -504,7 +504,7 @@ out_free_buf:
 
 #if VERBOSE_TIMING
     t = get_cycles() - t;
-    debug("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
+    log_debug("Time taken to clean up: %.3f µsec.\n", get_time_in_microseconds(t));
 #endif
 
     return rv;
@@ -520,12 +520,12 @@ int send_message(struct rdma_cm_id *id, void* buf, size_t length) {
     if ((mr = dccs_reg_msgs(id, buf, length)) == NULL)
         goto end;
     if ((rv = dccs_rdma_send(id, buf, length, mr)) != 0) {
-        sys_error("Failed to send message.\n");
+        log_error("Failed to send message.\n");
         goto out_dereg_mr;
     }
     while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
     if (rv < 0) {
-        sys_error("Failed to send comp message.\n");
+        log_error("Failed to send comp message.\n");
         goto out_dereg_mr;
     }
 
@@ -543,12 +543,12 @@ int recv_message(struct rdma_cm_id *id, void* buf, size_t length) {
     if ((mr = dccs_reg_msgs(id, buf, length)) == NULL)
         goto end;
     if ((rv = dccs_rdma_recv(id, buf, length, mr)) != 0) {
-        sys_error("Failed to recv message.\n");
+        log_error("Failed to recv message.\n");
         goto out_dereg_mr;
     }
     while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
     if (rv < 0) {
-        sys_error("Failed to recv comp message.\n");
+        log_error("Failed to recv comp message.\n");
         goto out_dereg_mr;
     }
 
@@ -726,7 +726,7 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
 
 void print_sha1sum(struct dccs_request *requests, size_t count) {
     if (count == 0) {
-        sys_error("Failed to calculate SHA1 sum: empty request array.");
+        log_error("Failed to calculate SHA1 sum: empty request array.");
         return;
     }
 

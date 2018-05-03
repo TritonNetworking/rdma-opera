@@ -23,35 +23,35 @@ int run_server(struct dccs_parameters params) {
     if ((rv = dccs_listen(&listen_id, &id, &res, params.port)) != 0)
         goto end;
 
-debug("Allocating buffer ...\n");
+log_debug("Allocating buffer ...\n");
     size_t requests_size = params.count * sizeof(struct dccs_request);
     requests = malloc(requests_size);
     memset(requests, 0, requests_size);
     if ((rv = allocate_buffer(id, requests, params.length, params.count, Read)) != 0) {
-        sys_error("Failed to allocate buffers.\n");
+        log_error("Failed to allocate buffers.\n");
         goto out_disconnect;
     }
 
-debug("Sending local MR info ...\n");
+log_debug("Sending local MR info ...\n");
     if ((rv = send_local_mr_info(id, requests, params.count)) < 0) {
-        sys_error("Failed to get remote MR info.\n");
+        log_error("Failed to get remote MR info.\n");
         goto out_deallocate_buffer;
     }
 
-debug("Waiting for end message ...\n");
+log_debug("Waiting for end message ...\n");
     char buf[4] = { 0 };
     if ((rv = recv_message(id, buf, 4)) < 0) {
-        sys_error("Failed to recv terminating message.\n");
+        log_error("Failed to recv terminating message.\n");
         goto out_deallocate_buffer;
     }
 
     print_sha1sum(requests, params.count);
 
 out_deallocate_buffer:
-    debug("de-allocating buffer\n");
+    log_debug("de-allocating buffer\n");
     deallocate_buffer(requests, params.count);
 out_disconnect:
-    debug("Disconnecting\n");
+    log_debug("Disconnecting\n");
     dccs_server_disconnect(id, listen_id, res);
 end:
     return rv;
