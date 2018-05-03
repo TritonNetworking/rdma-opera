@@ -33,6 +33,7 @@ extern uint64_t clock_rate;
 #define LOG_DEBUG 2
 #define LOG_WARNING 3
 #define LOG_ERROR 4
+#define LOG_PERROR 5
 
 void vlog_level(int level, const char *format, va_list arg) {
 #define KNRM  "\x1B[0m"
@@ -66,6 +67,10 @@ void vlog_level(int level, const char *format, va_list arg) {
         case LOG_ERROR:
             fprintf(stderr, "[%serror%s] ", KRED, KNRM);
             vfprintf(stderr, format, arg);
+            break;
+        case LOG_PERROR:
+            fprintf(stderr, "[%serror%s] ", KRED, KNRM);
+            perror(format);
             break;
         default:
             fprintf(stderr, "[%s%d%s]    ", KGRN, level, KNRM);
@@ -114,6 +119,10 @@ void log_error(const char *format, ...) {
     va_start(arg, format);
     vlog_level(LOG_ERROR, format, arg);
     va_end(arg);
+}
+
+void log_perror(const char *s) {
+    vlog_level(LOG_PERROR, s, NULL);
 }
 
 char *bin_to_hex_string(void *buf, size_t length) {
@@ -173,7 +182,7 @@ uint64_t get_clock_rate() {
     end = ((uint64_t) end_high) << 32 | end_low;
 
     if (start >= end) {
-        fprintf(stderr, "Invalid rdtsc/rdtscp results %lu, %lu.", end, start);
+        log_error("Invalid rdtsc/rdtscp results %lu, %lu.", end, start);
         exit(EXIT_FAILURE);
     } else {
         return end - start;
@@ -219,7 +228,7 @@ void set_cpu_affinity() {
   CPU_ZERO(&set);
   CPU_SET(CPU_TO_USE, &set);
   if (sched_setaffinity(0, sizeof(set), &set) == -1) {
-    perror("sched_setaffinity failed");
+    log_perror("sched_setaffinity failed");
     exit(EXIT_FAILURE);
   }
 }
@@ -339,7 +348,7 @@ void *malloc_random(size_t size) {
     void *buf;
 
     if (posix_memalign(&buf, CACHE_LINE_SIZE, size) != 0) {
-        perror("posix_memalign");
+        log_perror("posix_memalign");
         log_warning("Failed to malloc aligned memory, falling back to malloc() ...\n");
         buf = malloc(size);
     }

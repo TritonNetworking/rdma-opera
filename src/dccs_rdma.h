@@ -41,7 +41,7 @@ int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *serve
     memset(&hints, 0, sizeof hints);
     hints.ai_port_space = RDMA_PS_TCP;
     if ((rv = rdma_getaddrinfo(server, port, &hints, res)) != 0) {
-        perror("rmda_getaddrinfo");
+        log_perror("rmda_getaddrinfo");
         goto end;
     }
 
@@ -51,12 +51,12 @@ int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *serve
     attr.qp_type = IBV_QPT_RC;
 
     if ((rv = rdma_create_ep(id, *res, NULL, &attr)) != 0) {
-        perror("rdma_create_ep");
+        log_perror("rdma_create_ep");
         goto out_free_addrinfo;
     }
 
     if ((rv = rdma_connect(*id, NULL)) != 0) {
-        perror("rdma_connect");
+        log_perror("rdma_connect");
         goto out_destroy_listen_ep;
     }
 
@@ -79,7 +79,7 @@ int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, struct rd
     hints.ai_flags = RAI_PASSIVE;
     hints.ai_port_space = RDMA_PS_TCP;
     if ((rv = rdma_getaddrinfo(NULL, port, &hints, res)) != 0) {
-        perror("rmda_getaddrinfo");
+        log_perror("rmda_getaddrinfo");
         goto end;
     }
 
@@ -88,24 +88,24 @@ int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, struct rd
     attr.qp_type = IBV_QPT_RC;
     
     if ((rv = rdma_create_ep(listen_id, *res, NULL, &attr)) != 0) {
-        perror("rdma_create_ep");
+        log_perror("rdma_create_ep");
         goto out_free_addrinfo;
     }
 
     if ((rv = rdma_listen(*listen_id, 0)) != 0) {
-        perror("rdma_listen");
+        log_perror("rdma_listen");
         goto out_destroy_listen_ep;
     }
 
     if ((rv = rdma_get_request(*listen_id, id)) != 0) {
-        perror("rdma_get_request");
+        log_perror("rdma_get_request");
         goto out_destroy_listen_ep;
     }
 
     // need ibv_query_qp?
 
     if ((rv = rdma_accept(*id, NULL)) != 0) {
-        perror("rdma_accept");
+        log_perror("rdma_accept");
         goto out_destroy_accept_ep;
     }
 
@@ -139,7 +139,7 @@ void dccs_server_disconnect(struct rdma_cm_id *id, struct rdma_cm_id *listen_id,
 struct ibv_mr * dccs_reg_msgs(struct rdma_cm_id *id, void *addr, size_t length) {
     struct ibv_mr *mr;
     if ((mr = rdma_reg_msgs(id, addr, length)) == NULL) {
-        perror("rdma_reg_msgs");
+        log_perror("rdma_reg_msgs");
     }
 
     return mr;
@@ -148,7 +148,7 @@ struct ibv_mr * dccs_reg_msgs(struct rdma_cm_id *id, void *addr, size_t length) 
 struct ibv_mr * dccs_reg_read(struct rdma_cm_id *id, void *addr, size_t length) {
     struct ibv_mr *mr;
     if ((mr = rdma_reg_read(id, addr, length)) == NULL) {
-        perror("rdma_reg_read");
+        log_perror("rdma_reg_read");
     }
 
     return mr;
@@ -157,7 +157,7 @@ struct ibv_mr * dccs_reg_read(struct rdma_cm_id *id, void *addr, size_t length) 
 struct ibv_mr * dccs_reg_write(struct rdma_cm_id *id, void *addr, size_t length) {
     struct ibv_mr *mr;
     if ((mr = rdma_reg_write(id, addr, length)) == NULL) {
-        perror("rdma_reg_write");
+        log_perror("rdma_reg_write");
     }
 
     return mr;
@@ -181,7 +181,7 @@ int dccs_rdma_send(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_
     flags |= IBV_SEND_SIGNALED;
     //log_debug("RDMA send ...\n");
     if ((rv = rdma_post_send(id, NULL, addr, length, mr, flags)) != 0) {
-        perror("rdma_post_send");
+        log_perror("rdma_post_send");
     }
 
     //log_debug("RDMA send returned %d.\n", rv);
@@ -192,7 +192,7 @@ int dccs_rdma_recv(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_
     int rv;
     //log_debug("RDMA recv ...\n");
     if ((rv = rdma_post_recv(id, NULL, addr, length, mr)) != 0) {
-        perror("rdma_post_recv");
+        log_perror("rdma_post_recv");
     }
 
     //log_debug("RDMA recv returned %d.\n", rv);
@@ -204,7 +204,7 @@ int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_add
     int flags = IBV_SEND_SIGNALED;
     //log_debug("RDMA read ...\n");
     if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
-        perror("rdma_post_read");
+        log_perror("rdma_post_read");
     }
 
     //log_debug("RDMA read returned %d.\n", rv);
@@ -216,7 +216,7 @@ int dccs_rdma_write(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_ad
     int flags = IBV_SEND_SIGNALED;
     log_debug("RDMA write ...\n");
     if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
-        perror("rdma_post_write");
+        log_perror("rdma_post_write");
     }
 
     log_debug("RDMA write returned %d.\n", rv);
