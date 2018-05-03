@@ -13,7 +13,8 @@
 #include <stdbool.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
-#include "utils.h"
+
+#include "dccs_utils.h"
 
 #define MAX_WR 1000
 #define VERBOSE_TIMING 1

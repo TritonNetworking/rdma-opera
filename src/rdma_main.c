@@ -4,8 +4,8 @@
 
 #include <stdio.h>
 
-#include "config.h"
-#include "utils.h"
+#include "dccs_config.h"
+#include "dccs_utils.h"
 #include "dccs_parameters.h"
 #include "dccs_rdma.h"
 #include "rdma_client.h"

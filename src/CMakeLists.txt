@@ -8,10 +8,10 @@ set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -Wall -g -O0")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -Wall -O3")
 
 set(HEADER_FILES
-        config.h
+        dccs_config.h
         dccs_parameters.h
         dccs_rdma.h
-        utils.h)
+        dccs_utils.h)
 
 add_executable(rdma_exec
         ${HEADER_FILES}

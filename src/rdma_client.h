@@ -10,8 +10,8 @@
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
-#include "config.h"
-#include "utils.h"
+#include "dccs_config.h"
+#include "dccs_utils.h"
 #include "dccs_parameters.h"
 #include "dccs_rdma.h"
 
