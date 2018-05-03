@@ -35,31 +35,40 @@ extern uint64_t clock_rate;
 #define LOG_ERROR 4
 
 void vlog_level(int level, const char *format, va_list arg) {
+#define KNRM  "\x1B[0m"
+#define KRED  "\x1B[31m"
+#define KGRN  "\x1B[32m"
+#define KYEL  "\x1B[33m"
+#define KBLU  "\x1B[34m"
+#define KMAG  "\x1B[35m"
+#define KCYN  "\x1B[36m"
+#define KWHT  "\x1B[37m"
+
     switch (level) {
         case LOG_VERBOSE:
-            fprintf(stderr, "[VERBOSE] ");
+            fprintf(stderr, "[%sverbose%s] ", KBLU, KNRM);
             vfprintf(stderr, format, arg);
             break;
         case LOG_INFO:
-            fprintf(stderr, "[INFO] ");
+            fprintf(stderr, "[%sinfo%s]  ", KCYN, KNRM);
             vfprintf(stderr, format, arg);
             break;
         case LOG_DEBUG:
 #if DEBUG
-            fprintf(stderr, "[DEBUG] ");
+            fprintf(stderr, "[%sdebug%s] ", KMAG, KNRM);
             vfprintf(stderr, format, arg);
 #endif
             break;
         case LOG_WARNING:
-            fprintf(stderr, "[WARN] ");
+            fprintf(stderr, "[%swarn%s]  ", KYEL, KNRM);
             vfprintf(stderr, format, arg);
             break;
         case LOG_ERROR:
-            fprintf(stderr, "[ERROR] ");
+            fprintf(stderr, "[%serror%s] ", KRED, KNRM);
             vfprintf(stderr, format, arg);
             break;
         default:
-            fprintf(stderr, "[%d] ", level);
+            fprintf(stderr, "[%s%d%s]    ", KGRN, level, KNRM);
             vfprintf(stderr, format, arg);
             break;
     }
