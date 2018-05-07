@@ -12,9 +12,10 @@ verb="read"
 mode="latency"
 server="$1"
 
+cd ../build
 while [[ $l -le $limit ]]; do
     echo "Length = $l ..."
-    ../build/rdma_exec -b $l -r $count -v $verb -m $mode $server
+    ./rdma_exec -b $l -r $count -v $verb -m $mode $server
     (( l *= 2 ))
     echo ""
 done
