@@ -16,11 +16,6 @@
 #include "dccs_utils.h"
 #include "dccs_parameters.h"
 
-#define MAX_WR 1000
-#define VERBOSE_TIMING 1
-
-#define MILLION 1000000UL
-
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
 static inline uint64_t ntohll(uint64_t x) { return bswap_64(x); }
@@ -779,7 +774,6 @@ void print_raw_latencies(double *latencies, size_t count) {
  * Print latency report.
  */
 void print_latency_report(struct dccs_parameters *params, struct dccs_request *requests) {
-    int time_per_round = 200;
     double sum = 0;
     double min = DBL_MAX;
     double max = 0;

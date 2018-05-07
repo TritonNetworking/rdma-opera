@@ -18,15 +18,9 @@
 
 #include "dccs_parameters.h"
 
-#define USE_RDTSC 0
-
-#define BILLION 1000000000UL
-
 extern uint64_t clock_rate;
 
-/* Debug functions */
-
-#define DEBUG 1
+/* Logging functions */
 
 #define LOG_VERBOSE 0
 #define LOG_INFO 1
@@ -196,7 +190,7 @@ uint64_t get_clock_rate() {
 
 double get_time_in_microseconds(uint64_t cycles) {
 #if USE_RDTSC
-    return (double)cycles / CPU_CLOCK_RATE * 1e6;
+    return (double)cycles / clock_rate * 1e6;
 #else
     return (double)cycles / 1e3;
 #endif
@@ -220,8 +214,6 @@ void sort_latencies(double *latencies, size_t count) {
 }
 
 /* Init functions */
-
-#define CPU_TO_USE 0
 
 void set_cpu_affinity() {
   cpu_set_t set;
