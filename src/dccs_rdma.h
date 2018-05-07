@@ -837,7 +837,20 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
  * Print throughput report.
  */
 void print_throughput_report(struct dccs_parameters *params, struct dccs_request *requests) {
-    // TODO: implement this.
+    size_t count = params->count;
+    size_t length = params->length;
+
+    size_t transfered_bytes = count * length;
+    uint64_t start_cycles = requests[0].start;
+    uint64_t end_cycles = requests[count - 1].end;
+    double elapsed_seconds = (double)(end_cycles - start_cycles) / (double)clock_rate;
+    double throughput_bytes_per_second = (double)transfered_bytes / elapsed_seconds;
+    double throughput_gbits = throughput_bytes_per_second * 8 / 1e9;
+
+    log_info("=====================\n");
+    log_info("Throughput Report\n");
+    log_info("Transferred: %lu B, elapsed: %.3e s, throughput: %.3f Gbps.\n", transfered_bytes, elapsed_seconds, throughput_gbits);
+    log_info("=====================\n\n");
 }
 
 #endif // DCCS_RDMA_H
