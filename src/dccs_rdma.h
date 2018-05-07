@@ -169,16 +169,9 @@ void dccs_dereg_mr(struct ibv_mr *mr) {
 
 /* RDMA Operations */
 
-/*
-int dccs_exchange(struct rdma_cm_id *id) {
-    return -1;
-}
- */
-
-int dccs_rdma_send(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr) {
+int dccs_rdma_send_with_flags(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr, int flags) {
     int rv;
-    int flags = 0; //IBV_SEND_INLINE;    // TODO: check if possible
-    flags |= IBV_SEND_SIGNALED;
+    //flags = IBV_SEND_INLINE;    // TODO: check if possible
     //log_debug("RDMA send ...\n");
     if ((rv = rdma_post_send(id, NULL, addr, length, mr, flags)) != 0) {
         log_perror("rdma_post_send");
@@ -186,6 +179,10 @@ int dccs_rdma_send(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_
 
     //log_debug("RDMA send returned %d.\n", rv);
     return rv;
+}
+
+static inline int dccs_rdma_send(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr) {
+    return dccs_rdma_send_with_flags(id, addr, length, mr, IBV_SEND_SIGNALED);
 }
 
 int dccs_rdma_recv(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr) {
@@ -199,9 +196,8 @@ int dccs_rdma_recv(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_
     return rv;
 }
 
-int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
+int dccs_rdma_read_with_flags(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey, int flags) {
     int rv;
-    int flags = IBV_SEND_SIGNALED;
     //log_debug("RDMA read ...\n");
     if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
         log_perror("rdma_post_read");
@@ -211,16 +207,23 @@ int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_add
     return rv;
 }
 
-int dccs_rdma_write(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
+static inline int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
+    return dccs_rdma_read_with_flags(id, mr, remote_addr, rkey, IBV_SEND_SIGNALED);
+}
+
+int dccs_rdma_write_with_flags(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey, int flags) {
     int rv;
-    int flags = IBV_SEND_SIGNALED;
-    log_debug("RDMA write ...\n");
+    // log_debug("RDMA write ...\n");
     if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
         log_perror("rdma_post_write");
     }
 
-    log_debug("RDMA write returned %d.\n", rv);
+    // log_debug("RDMA write returned %d.\n", rv);
     return rv;
+}
+
+static inline int dccs_rdma_write(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
+    return dccs_rdma_write_with_flags(id, mr, remote_addr, rkey, IBV_SEND_SIGNALED);
 }
 
 /* RDMA completion event */
@@ -648,10 +651,21 @@ int wait_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
 /**
  * Send and wait for multiple RDMA requests.
  */
-int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t count) {
+int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests, struct dccs_parameters *params) {
     int rv;
     int failed_count = 0;
+    size_t count = params->count;
     struct ibv_wc wc;
+    int flags = 0;  // RDMA post signal
+
+    switch (params->mode) {
+        case MODE_LATENCY:      // Signal on all requests.
+            flags |= IBV_SEND_SIGNALED;
+            break;
+        case MODE_THROUGHPUT:   // Only signal the last request.
+            flags &= ~IBV_SEND_SIGNALED;
+            break;
+    }
 
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
@@ -682,22 +696,25 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         bool failed = false;
+        if (n == count - 1) {   // Always signal the last request
+            flags |= IBV_SEND_SIGNALED;
+        }
 
         switch (request->verb) {
             case Send:
-                rv = dccs_rdma_send(id, request->buf, request->length, request->mr);
+                rv = dccs_rdma_send_with_flags(id, request->buf, request->length, request->mr, flags);
                 request->start = get_cycles();
                 if (rv != 0)
                     failed = true;
                 break;
             case Read:
-                rv = dccs_rdma_read(id, request->mr, request->remote_addr, request->remote_rkey);
+                rv = dccs_rdma_read_with_flags(id, request->mr, request->remote_addr, request->remote_rkey, flags);
                 request->start = get_cycles();
                 if (rv != 0)
                     failed = true;
                 break;
             case Write:
-                rv = dccs_rdma_write(id, request->mr, request->remote_addr, request->remote_rkey);
+                rv = dccs_rdma_write_with_flags(id, request->mr, request->remote_addr, request->remote_rkey, flags);
                 request->start = get_cycles();
                 if (rv != 0)
                     failed = true;
@@ -707,10 +724,12 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
                 break;
         }
 
-        rv = dccs_rdma_send_comp(id, &wc);
-        request->end = get_cycles();
-        if (rv < 0)
-            failed = true;
+        if (flags & IBV_SEND_SIGNALED) {
+            rv = dccs_rdma_send_comp(id, &wc);
+            request->end = get_cycles();
+            if (rv < 0)
+                failed = true;
+        }
 
         if (failed)
             failed_count++;
@@ -818,6 +837,13 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
     log_info("=====================\n\n");
 
     free(latencies);
+}
+
+/**
+ * Print throughput report.
+ */
+void print_throughput_report(struct dccs_parameters *params, struct dccs_request *requests) {
+    // TODO: implement this.
 }
 
 #endif // DCCS_RDMA_H

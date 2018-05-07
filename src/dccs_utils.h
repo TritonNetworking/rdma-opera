@@ -234,7 +234,7 @@ void set_cpu_affinity() {
 }
 
 void print_usage(char *argv0) {
-    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-V {verbose}] [server]\n", argv0);
+    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-V {verbose}] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
@@ -266,6 +266,8 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->length = DEFAULT_MESSAGE_LENGTH;
     params->server = NULL;
     params->port = DEFAULT_PORT;
+    params->mode = MODE_LATENCY;
+    params->verbose = false;
 
     while (true) {
         static struct option long_options[] = {
@@ -273,11 +275,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
             { "repeat", required_argument, 0, 'r' },
             { "verb", required_argument, 0, 'v' },
             { "port", required_argument, 0, 'p' },
+            { "mode", required_argument, 0, 'm' },
             { "verbose", no_argument, 0, 'V' },
             { "help", no_argument, 0, 'h' }
         };
 
-        c = getopt_long(argc, argv, "b:r:v:p:Vh", long_options, NULL);
+        c = getopt_long(argc, argv, "b:r:v:p:m:Vh", long_options, NULL);
         if (c == -1)
             break;
 
@@ -307,6 +310,17 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 break;
             case 'p':
                 params->port = optarg;
+                break;
+            case 'm':
+                if (strcmp(optarg, "latency") == 0) {
+                    params->mode = MODE_LATENCY;
+                } else if (strcmp(optarg, "throughput") == 0) {
+                    params->mode = MODE_THROUGHPUT;
+                } else {
+                    print_usage(argv[0]);
+                    exit(EXIT_FAILURE);
+                }
+
                 break;
             case 'V':
                 params->verbose = 1;

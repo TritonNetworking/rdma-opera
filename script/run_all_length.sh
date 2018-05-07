@@ -9,11 +9,12 @@ limit=8388608
 
 count=1000
 verb="read"
+mode="latency"
 server="$1"
 
 while [[ $l -le $limit ]]; do
     echo "Length = $l ..."
-    ../build/rdma_exec -b $l -r $count -v $verb $server
+    ../build/rdma_exec -b $l -r $count -v $verb -m $mode $server
     (( l *= 2 ))
     echo ""
 done

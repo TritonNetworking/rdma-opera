@@ -55,7 +55,7 @@ log_debug("Waiting for RDMA requests completion.\n");
 */
 
 log_debug("Sending and waiting for RDMA requests ...\n");
-    if ((rv = send_and_wait_requests(id, requests, params.count)) < 0) {
+    if ((rv = send_and_wait_requests(id, requests, &params)) < 0) {
         log_error("Failed to send and send comp all requests.\n");
         goto out_deallocate_buffer;
     }
@@ -68,7 +68,15 @@ log_debug("Sending terminating message ...\n");
     }
 
     print_sha1sum(requests, params.count);
-    print_latency_report(&params, requests);
+    switch (params.mode) {
+        case MODE_LATENCY:
+            print_latency_report(&params, requests);
+            break;
+        case MODE_THROUGHPUT:
+            print_throughput_report(&params, requests);
+            break;
+    }
+    
 
 out_deallocate_buffer:
     log_debug("de-allocating buffer\n");
