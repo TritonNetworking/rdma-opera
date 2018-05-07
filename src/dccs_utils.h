@@ -45,8 +45,8 @@ void vlog_level(int level, const char *format, va_list arg) {
             vfprintf(stderr, format, arg);
             break;
         case LOG_INFO:
-            fprintf(stderr, "[%sinfo%s]  ", KCYN, KNRM);
-            vfprintf(stderr, format, arg);
+            fprintf(stdout, "[%sinfo%s]  ", KCYN, KNRM);
+            vfprintf(stdout, format, arg);
             break;
         case LOG_DEBUG:
 #if DEBUG
