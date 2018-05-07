@@ -226,11 +226,11 @@ void set_cpu_affinity() {
 }
 
 void print_usage(char *argv0) {
-    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-V {verbose}] [server]\n", argv0);
+    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
-    char *verb;
+    char *verb, *mode;
     switch (params->verb) {
         case Read:
             verb = "Read";
@@ -243,7 +243,20 @@ void print_parameters(struct dccs_parameters *params) {
             break;
     }
 
+    switch (params->mode) {
+        case MODE_LATENCY:
+            mode = "Latency";
+            break;
+        case MODE_THROUGHPUT:
+            mode = "Throughput";
+            break;
+        default:
+            mode = "Unknown";
+            break;
+    }
+
     log_info("Config: verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
+    log_info("Config: mode = %s, warmup count = %zu, verbose = %d.\n", mode, params->warmup_count, params->verbose);
 }
 
 /**
@@ -259,6 +272,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->server = NULL;
     params->port = DEFAULT_PORT;
     params->mode = MODE_LATENCY;
+    params->warmup_count = DEFAULT_WARMUP_COUNT;
     params->verbose = false;
 
     while (true) {
@@ -268,11 +282,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
             { "verb", required_argument, 0, 'v' },
             { "port", required_argument, 0, 'p' },
             { "mode", required_argument, 0, 'm' },
+            { "warmup", required_argument, 0, 'w' },
             { "verbose", no_argument, 0, 'V' },
             { "help", no_argument, 0, 'h' }
         };
 
-        c = getopt_long(argc, argv, "b:r:v:p:m:Vh", long_options, NULL);
+        c = getopt_long(argc, argv, "b:r:v:p:m:w:Vh", long_options, NULL);
         if (c == -1)
             break;
 
@@ -314,6 +329,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 }
 
                 break;
+            case 'w':
+                if (sscanf(optarg, "%zu", &(params->warmup_count)) != 1) {
+                    goto invalid;
+                }
+
+                break;
             case 'V':
                 params->verbose = 1;
                 break;
@@ -328,6 +349,9 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 break;
         }
     }
+
+    if (params->mode == MODE_THROUGHPUT)
+        params->count += params->warmup_count;
 
     if (optind + 1 == argc) {
         params->server = argv[optind];

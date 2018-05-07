@@ -24,6 +24,7 @@ struct dccs_parameters {
     char *port;
 
     Mode mode;
+    size_t warmup_count;
     bool verbose;
 };
 

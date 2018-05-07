@@ -780,6 +780,7 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
     double median, average, stdev, sumsq;
     double percent90, percent99;
 
+    // Note: latency measurement does not take warmup into account for now.
     size_t count = params->count;
     size_t length = params->length;
 
@@ -837,11 +838,12 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
  * Print throughput report.
  */
 void print_throughput_report(struct dccs_parameters *params, struct dccs_request *requests) {
+    size_t warmup_count = params->warmup_count;
     size_t count = params->count;
     size_t length = params->length;
 
-    size_t transfered_bytes = count * length;
-    uint64_t start_cycles = requests[0].start;
+    size_t transfered_bytes = (count - warmup_count) * length;
+    uint64_t start_cycles = requests[warmup_count].start;
     uint64_t end_cycles = requests[count - 1].end;
     double elapsed_seconds = (double)(end_cycles - start_cycles) / (double)clock_rate;
     double throughput_bytes_per_second = (double)transfered_bytes / elapsed_seconds;
