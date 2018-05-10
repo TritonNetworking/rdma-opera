@@ -54,10 +54,25 @@ log_debug("Waiting for RDMA requests completion.\n");
     }
 */
 
-log_debug("Sending and waiting for RDMA requests ...\n");
-    if ((rv = send_and_wait_requests(id, requests, &params)) < 0) {
-        log_error("Failed to send and send comp all requests.\n");
-        goto out_deallocate_buffer;
+    for (size_t n = 0; n < DEFAULT_REPEAT_COUNT; n++) {
+        log_debug("Round %zu.\n", n + 1);
+        log_debug("Sending and waiting for RDMA requests ...\n");
+        if ((rv = send_and_wait_requests(id, requests, &params)) < 0) {
+            log_error("Failed to send and send comp all requests.\n");
+            goto out_deallocate_buffer;
+        }
+
+        print_sha1sum(requests, params.count);
+        switch (params.mode) {
+            case MODE_LATENCY:
+                print_latency_report(&params, requests);
+                break;
+            case MODE_THROUGHPUT:
+                print_throughput_report(&params, requests);
+                break;
+        }
+
+        log_debug("\n");
     }
 
 log_debug("Sending terminating message ...\n");
@@ -66,17 +81,6 @@ log_debug("Sending terminating message ...\n");
         log_error("Failed to send terminating message.\n");
         goto out_deallocate_buffer;
     }
-
-    print_sha1sum(requests, params.count);
-    switch (params.mode) {
-        case MODE_LATENCY:
-            print_latency_report(&params, requests);
-            break;
-        case MODE_THROUGHPUT:
-            print_throughput_report(&params, requests);
-            break;
-    }
-    
 
 out_deallocate_buffer:
     log_debug("de-allocating buffer\n");

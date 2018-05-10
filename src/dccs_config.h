@@ -23,6 +23,7 @@
 #define DEFAULT_MESSAGE_LENGTH 2
 #define DEFAULT_PORT "1234"
 #define DEFAULT_WARMUP_COUNT 0
+#define DEFAULT_REPEAT_COUNT 1
 
 /* Protocol configuration */
 #define DCCS_CYCLE_UPTIME 180   // Cycle up time, in µsec
