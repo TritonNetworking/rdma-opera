@@ -689,7 +689,9 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
     uint64_t start = get_cycles();
 
     for (size_t n = 0; n < count; n++) {
-        struct dccs_request *request = requests + n;
+        // In latency test, the tool always uses the same request.
+        size_t offset = params->mode == MODE_LATENCY ? 0 : n;
+        struct dccs_request *request = requests + offset;
         bool failed = false;
         if (n == count - 1) {   // Always signal the last request
             flags |= IBV_SEND_SIGNALED;
@@ -698,30 +700,26 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
         switch (request->verb) {
             case Send:
                 rv = dccs_rdma_send_with_flags(id, request->buf, request->length, request->mr, flags);
-                request->start = get_cycles();
-                if (rv != 0)
-                    failed = true;
                 break;
             case Read:
                 rv = dccs_rdma_read_with_flags(id, request->mr, request->remote_addr, request->remote_rkey, flags);
-                request->start = get_cycles();
-                if (rv != 0)
-                    failed = true;
                 break;
             case Write:
                 rv = dccs_rdma_write_with_flags(id, request->mr, request->remote_addr, request->remote_rkey, flags);
-                request->start = get_cycles();
-                if (rv != 0)
-                    failed = true;
                 break;
             default:
                 log_warning("Unrecognized request (n = %zu).", n);
+                rv = 0;
                 break;
         }
 
+        requests[n].start = get_cycles();
+        if (rv != 0)
+            failed = true;
+
         if (flags & IBV_SEND_SIGNALED) {
             rv = dccs_rdma_send_comp(id, &wc);
-            request->end = get_cycles();
+            requests[n].end = get_cycles();
             if (rv < 0)
                 failed = true;
         }
