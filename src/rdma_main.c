@@ -11,7 +11,7 @@
 #include "rdma_client.h"
 #include "rdma_server.h"
 
-uint64_t clock_rate = 0;
+uint64_t clock_rate = 0;    // Clock ticks per second
 
 int main(int argc, char *argv[]) {
     struct dccs_parameters params;

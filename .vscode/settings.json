@@ -26,6 +26,7 @@
         "bitset": "cpp",
         "chrono": "cpp",
         "ostream": "cpp",
-        "__tuple": "cpp"
+        "__tuple": "cpp",
+        "istream": "cpp"
     }
 }

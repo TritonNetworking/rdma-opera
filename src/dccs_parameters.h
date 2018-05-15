@@ -9,6 +9,7 @@
 #include <rdma/rdma_verbs.h>
 
 typedef enum { None, Send, Read, Write } Verb;
+typedef enum { MODE_LATENCY, MODE_THROUGHPUT } Mode;
 
 struct dccs_mr_info{
     uint64_t addr;
@@ -22,6 +23,8 @@ struct dccs_parameters {
     char *server;
     char *port;
 
+    Mode mode;
+    size_t warmup_count;
     bool verbose;
 };
 

@@ -18,15 +18,9 @@
 
 #include "dccs_parameters.h"
 
-#define USE_RDTSC 0
-
-#define BILLION 1000000000UL
-
 extern uint64_t clock_rate;
 
-/* Debug functions */
-
-#define DEBUG 1
+/* Logging functions */
 
 #define LOG_VERBOSE 0
 #define LOG_INFO 1
@@ -51,8 +45,8 @@ void vlog_level(int level, const char *format, va_list arg) {
             vfprintf(stderr, format, arg);
             break;
         case LOG_INFO:
-            fprintf(stderr, "[%sinfo%s]  ", KCYN, KNRM);
-            vfprintf(stderr, format, arg);
+            fprintf(stdout, "[%sinfo%s]  ", KCYN, KNRM);
+            vfprintf(stdout, format, arg);
             break;
         case LOG_DEBUG:
 #if DEBUG
@@ -196,7 +190,7 @@ uint64_t get_clock_rate() {
 
 double get_time_in_microseconds(uint64_t cycles) {
 #if USE_RDTSC
-    return (double)cycles / CPU_CLOCK_RATE * 1e6;
+    return (double)cycles / clock_rate * 1e6;
 #else
     return (double)cycles / 1e3;
 #endif
@@ -221,8 +215,6 @@ void sort_latencies(double *latencies, size_t count) {
 
 /* Init functions */
 
-#define CPU_TO_USE 0
-
 void set_cpu_affinity() {
   cpu_set_t set;
   CPU_ZERO(&set);
@@ -234,11 +226,11 @@ void set_cpu_affinity() {
 }
 
 void print_usage(char *argv0) {
-    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-V {verbose}] [server]\n", argv0);
+    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
-    char *verb;
+    char *verb, *mode;
     switch (params->verb) {
         case Read:
             verb = "Read";
@@ -251,7 +243,20 @@ void print_parameters(struct dccs_parameters *params) {
             break;
     }
 
+    switch (params->mode) {
+        case MODE_LATENCY:
+            mode = "Latency";
+            break;
+        case MODE_THROUGHPUT:
+            mode = "Throughput";
+            break;
+        default:
+            mode = "Unknown";
+            break;
+    }
+
     log_info("Config: verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
+    log_info("Config: mode = %s, warmup count = %zu, verbose = %d.\n", mode, params->warmup_count, params->verbose);
 }
 
 /**
@@ -266,6 +271,9 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->length = DEFAULT_MESSAGE_LENGTH;
     params->server = NULL;
     params->port = DEFAULT_PORT;
+    params->mode = MODE_LATENCY;
+    params->warmup_count = DEFAULT_WARMUP_COUNT;
+    params->verbose = false;
 
     while (true) {
         static struct option long_options[] = {
@@ -273,11 +281,13 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
             { "repeat", required_argument, 0, 'r' },
             { "verb", required_argument, 0, 'v' },
             { "port", required_argument, 0, 'p' },
+            { "mode", required_argument, 0, 'm' },
+            { "warmup", required_argument, 0, 'w' },
             { "verbose", no_argument, 0, 'V' },
             { "help", no_argument, 0, 'h' }
         };
 
-        c = getopt_long(argc, argv, "b:r:v:p:Vh", long_options, NULL);
+        c = getopt_long(argc, argv, "b:r:v:p:m:w:Vh", long_options, NULL);
         if (c == -1)
             break;
 
@@ -308,6 +318,23 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
             case 'p':
                 params->port = optarg;
                 break;
+            case 'm':
+                if (strcmp(optarg, "latency") == 0) {
+                    params->mode = MODE_LATENCY;
+                } else if (strcmp(optarg, "throughput") == 0) {
+                    params->mode = MODE_THROUGHPUT;
+                } else {
+                    print_usage(argv[0]);
+                    exit(EXIT_FAILURE);
+                }
+
+                break;
+            case 'w':
+                if (sscanf(optarg, "%zu", &(params->warmup_count)) != 1) {
+                    goto invalid;
+                }
+
+                break;
             case 'V':
                 params->verbose = 1;
                 break;
@@ -322,6 +349,9 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 break;
         }
     }
+
+    if (params->mode == MODE_THROUGHPUT)
+        params->count += params->warmup_count;
 
     if (optind + 1 == argc) {
         params->server = argv[optind];
