@@ -16,6 +16,7 @@
 #include <string.h>
 #include <time.h>
 
+#include "dccs_config.h"
 #include "dccs_parameters.h"
 
 extern uint64_t clock_rate;

@@ -5,11 +5,13 @@
 #ifndef DCCS_PARAMETER
 #define DCCS_PARAMETER
 
+#include <stdbool.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
 typedef enum { None, Send, Read, Write } Verb;
 typedef enum { MODE_LATENCY, MODE_THROUGHPUT } Mode;
+typedef enum { ROLE_CLIENT, ROLE_SERVER } Role;
 
 struct dccs_mr_info{
     uint64_t addr;

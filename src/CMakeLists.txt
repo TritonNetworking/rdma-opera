@@ -11,11 +11,11 @@ set(HEADER_FILES
         dccs_config.h
         dccs_parameters.h
         dccs_rdma.h
-        dccs_utils.h)
+        dccs_utils.h
+)
 
 add_executable(rdma_exec
         ${HEADER_FILES}
         rdma_main.c)
 
 target_link_libraries(rdma_exec m ssl crypto ibverbs rdmacm)
-
