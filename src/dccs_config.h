@@ -28,6 +28,8 @@
 /* Protocol configuration */
 #define DCCS_CYCLE_UPTIME 180   // Cycle up time, in µsec
 #define DCCS_CYCLE_DOWNTIME 20  // Cycle down time, in µsec
+#define SYNC_END_MESSAGE "End"
+#define SYNC_END_MESSAGE_LENGTH 4
 
 /* Math constants */
 #define MILLION 1000000UL

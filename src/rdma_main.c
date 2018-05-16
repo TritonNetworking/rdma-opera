@@ -11,7 +11,7 @@
 uint64_t clock_rate = 0;    // Clock ticks per second
 
 int run(struct dccs_parameters params) {
-    struct rdma_cm_id *listen_id, *id;
+    struct rdma_cm_id *listen_id = NULL, *id;
     struct rdma_addrinfo *res;
     struct dccs_request *requests;
     int rv = 0;
@@ -54,31 +54,56 @@ int run(struct dccs_parameters params) {
         }
     }
 
-    if (role == ROLE_CLIENT) {
-        // Client is active in RDMA experiments, i.e. requester.
+    for (size_t n = 0; n < DEFAULT_REPEAT_COUNT; n++) {
+        log_info("Round %zu.\n", n + 1);
+
+        if (role == ROLE_CLIENT) {
+            // Client is active in RDMA experiments, i.e. requester.
+
 /*
-        log_debug("Sending RDMA requests ...\n");
-        if ((rv = send_requests(id, requests, params.count)) < 0) {
-            log_error("Failed to send all requests.\n");
-            goto out_deallocate_buffer;
-        }
-
-        log_debug("Waiting for RDMA requests completion.\n");
-        if ((rv = wait_requests(id, requests, params.count)) < 0) {
-            log_error("Failed to send comp all requests.\n");
-            goto out_deallocate_buffer;
-        }
-*/
-
-        for (size_t n = 0; n < DEFAULT_REPEAT_COUNT; n++) {
-            log_info("Round %zu.\n", n + 1);
-            log_info("Sending and waiting for RDMA requests ...\n");
-            if ((rv = send_and_wait_requests(id, requests, &params)) < 0) {
-                log_error("Failed to send and send comp all requests.\n");
+            log_debug("Sending RDMA requests ...\n");
+            if ((rv = send_requests(id, requests, params.count)) < 0) {
+                log_error("Failed to send all requests.\n");
                 goto out_deallocate_buffer;
             }
 
-            print_sha1sum(requests, params.count);
+            log_debug("Waiting for RDMA requests completion.\n");
+            if ((rv = wait_requests(id, requests, params.count)) < 0) {
+                log_error("Failed to send comp all requests.\n");
+                goto out_deallocate_buffer;
+            }
+ */
+
+            log_info("Sending and waiting for RDMA requests ...\n");
+            if ((rv = send_and_wait_requests(id, requests, &params)) < 0) {
+                log_error("Failed to send and send comp all requests.\n");
+                goto out_end_request;
+            }
+        } else {    // role == ROLE_SERVER
+            // Server is passive in RDMA experiments, i.e. responder.
+        }
+
+out_end_request:
+        // Synchronize end of a round
+        if (role == ROLE_CLIENT) {
+            log_debug("Sending terminating message ...\n");
+            char buf[SYNC_END_MESSAGE_LENGTH] = SYNC_END_MESSAGE;
+            if ((rv = send_message(id, buf, SYNC_END_MESSAGE_LENGTH)) < 0) {
+                log_error("Failed to send terminating message.\n");
+                goto out_deallocate_buffer;
+            }
+        } else {    // role == ROLE_SERVER
+            log_debug("Waiting for end message ...\n");
+            char buf[SYNC_END_MESSAGE_LENGTH] = {0};
+            if ((rv = recv_message(id, buf, SYNC_END_MESSAGE_LENGTH)) < 0) {
+                log_error("Failed to recv terminating message.\n");
+                goto out_deallocate_buffer;
+            }
+        }
+
+        // Print stats
+        print_sha1sum(requests, params.count);
+        if (role == ROLE_CLIENT) {
             switch (params.mode) {
                 case MODE_LATENCY:
                     print_latency_report(&params, requests);
@@ -87,29 +112,7 @@ int run(struct dccs_parameters params) {
                     print_throughput_report(&params, requests);
                     break;
             }
-
-            log_info("\n");
         }
-    } else {
-        // Server is passive in RDMA experiments, i.e. responder.
-    }
-
-    if (role == ROLE_CLIENT) {
-        log_debug("Sending terminating message ...\n");
-        char buf[4] = "End";
-        if ((rv = send_message(id, buf, 4)) < 0) {
-            log_error("Failed to send terminating message.\n");
-            goto out_deallocate_buffer;
-        }
-    } else {    // role == ROLE_SERVER
-        log_debug("Waiting for end message ...\n");
-        char buf[4] = { 0 };
-        if ((rv = recv_message(id, buf, 4)) < 0) {
-            log_error("Failed to recv terminating message.\n");
-            goto out_deallocate_buffer;
-        }
-
-        print_sha1sum(requests, params.count);
     }
 
 
