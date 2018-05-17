@@ -48,7 +48,7 @@ int run(struct dccs_parameters params) {
         }
     } else {    // role == ROLE_SERVER
         log_debug("Sending local MR info ...\n");
-        if ((rv = send_local_mr_info(id, requests, params.count)) < 0) {
+        if ((rv = send_local_mr_info(id, requests, params.count, params.length)) < 0) {
             log_error("Failed to get remote MR info.\n");
             goto out_deallocate_buffer;
         }

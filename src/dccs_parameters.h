@@ -6,6 +6,7 @@
 #define DCCS_PARAMETER
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 

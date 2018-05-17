@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "dccs_config.h"
 #include "dccs_parameters.h"
@@ -191,7 +192,7 @@ uint64_t get_clock_rate() {
 
 double get_time_in_microseconds(uint64_t cycles) {
 #if USE_RDTSC
-    return (double)cycles / clock_rate * 1e6;
+    return (double)cycles / (double)clock_rate * 1e6;
 #else
     return (double)cycles / 1e3;
 #endif
