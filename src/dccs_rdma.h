@@ -574,30 +574,6 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
     int rv;
     int failed_count = 0;
 
-    for (size_t n = 0; n < count; n++) {
-        struct dccs_request *request = requests + n;
-        switch (request->verb) {
-            case Send:
-                request->mr = dccs_reg_msgs(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            case Read:
-                request->mr = dccs_reg_read(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            case Write:
-                request->mr = dccs_reg_write(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            default:
-                log_warning("Unrecognized request (n = %zu).", n);
-                break;
-        }
-    }
-
     uint64_t start = get_cycles();
 
     for (size_t n = 0; n < count; n++) {
@@ -669,30 +645,6 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
         case MODE_THROUGHPUT:   // Only signal the last request.
             flags &= ~IBV_SEND_SIGNALED;
             break;
-    }
-
-    for (size_t n = 0; n < count; n++) {
-        struct dccs_request *request = requests + n;
-        switch (request->verb) {
-            case Send:
-                request->mr = dccs_reg_msgs(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            case Read:
-                request->mr = dccs_reg_read(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            case Write:
-                request->mr = dccs_reg_write(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            default:
-                log_warning("Unrecognized request (n = %zu).", n);
-                break;
-        }
     }
 
     uint64_t start = get_cycles();
