@@ -209,7 +209,7 @@ static inline int dccs_rdma_read(struct rdma_cm_id *id, void *addr, size_t lengt
 int dccs_rdma_write_with_flags(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey, int flags) {
     int rv;
     // log_debug("RDMA write ...\n");
-    if ((rv = rdma_post_read(id, NULL, addr, length, mr, flags, remote_addr, rkey)) != 0) {
+    if ((rv = rdma_post_write(id, NULL, addr, length, mr, flags, remote_addr, rkey)) != 0) {
         log_perror("rdma_post_write");
     }
 
@@ -462,7 +462,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         struct dccs_mr_info *mr_info = mr_infos + n;
-        mr_info->addr = htonll((uint64_t)request->mr->addr + n * length);
+        mr_info->addr = htonll((uint64_t)request->buf);
         mr_info->rkey = htonl(request->mr->rkey);
     }
 #if VERBOSE_TIMING
