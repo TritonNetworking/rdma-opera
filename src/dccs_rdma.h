@@ -700,7 +700,7 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
     }
 
     uint64_t end = get_cycles();
-    log_debug("Time elapsed to send and wait all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / 2.4e9);
+    log_debug("Time elapsed to send and wait all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / (double)clock_rate);
 
     return -failed_count;
 }
@@ -731,12 +731,12 @@ void print_sha1sum(struct dccs_request *requests, size_t count) {
 }
 
 void print_raw_latencies(double *latencies, size_t count) {
-    log_info("Raw latency (µsec):\n");
-    log_info("Start,End,Latency\n");
+    log_verbose("Raw latency (µsec):\n");
+    log_verbose("Start,End,Latency\n");
     for (size_t n = 0; n < count; n++)
-        log_info("%.3f\n", latencies[n]);
+        log_verbose("%.3f\n", latencies[n]);
 
-    log_info("\n");
+    log_verbose("\n");
 }
 
 /**
