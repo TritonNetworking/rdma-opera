@@ -278,31 +278,39 @@ int dccs_rdma_recv_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
 /**
  * Allocate and register multiple buffers.
  */
-int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, size_t length, size_t count, Verb verb) {
-    size_t total_length = count * length;
-    void *buf_base = malloc_random(total_length);
-    struct ibv_mr *mr = NULL;
-    switch (verb) {
-        case Send:
-            mr = dccs_reg_msgs(id, buf_base, total_length);
-            break;
-        case Read:
-            mr = dccs_reg_read(id, buf_base, total_length);
-            break;
-        case Write:
-            mr = dccs_reg_write(id, buf_base, total_length);
-            break;
-        default:
-            log_error("Unrecognized verb %d.\n", verb);
-            break;
-    }
+int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, struct dccs_parameters params) {
+    Verb verb = params.verb;
+    size_t count = params.count;
+    size_t length = params.length;
+    size_t count_per_mr = count / params.mr_count;
+    size_t buffer_length = count_per_mr * length;
 
-    if (mr == NULL)
-        return -1;
+    struct ibv_mr *mr = NULL;
+    void *buf_base = NULL;
 
     for (size_t n = 0; n < count; n++) {
+        size_t offset = n % count_per_mr;
+        if (offset == 0) {
+            buf_base = malloc_random(buffer_length);
+
+            switch (verb) {
+                case Send:
+                    mr = dccs_reg_msgs(id, buf_base, buffer_length);
+                    break;
+                case Read:
+                    mr = dccs_reg_read(id, buf_base, buffer_length);
+                    break;
+                case Write:
+                    mr = dccs_reg_write(id, buf_base, buffer_length);
+                    break;
+                default:
+                    log_error("Unrecognized verb %d.\n", verb);
+                    break;
+            }
+        }
+
         struct dccs_request *request = requests + n;
-        void *buf = (void*)((uint8_t *)buf_base + n * length);
+        void *buf = (void*)((uint8_t *)buf_base + offset * length);
 
         request->verb = verb;
         request->buf = buf;
@@ -316,16 +324,18 @@ int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, size_t
 /**
  * De-allocate and de-register multiple buffers.
  */
-void deallocate_buffer(struct dccs_request *requests, size_t count) {
-    if (count == 0)
-        return;
+void deallocate_buffer(struct dccs_request *requests, struct dccs_parameters params) {
+    size_t count = params.count;
+    size_t count_per_mr = count / params.mr_count;
 
-    struct dccs_request *request0 = &requests[0];
-    if (request0->mr != NULL)
-        dccs_dereg_mr(request0->mr);
+    for (size_t n = 0; n < count; n++) {
+        if (n % count_per_mr != 0)
+            continue;
 
-    if (request0->buf != NULL)
-        free(request0->buf);
+        struct dccs_request *request = requests + n;
+        dccs_dereg_mr(request->mr);
+        free(request->buf);
+    }
 }
 
 /* Exchange MR information. */

@@ -34,7 +34,7 @@ int run(struct dccs_parameters params) {
     size_t requests_size = params.count * sizeof(struct dccs_request);
     requests = malloc(requests_size);
     memset(requests, 0, requests_size);
-    if ((rv = allocate_buffer(id, requests, params.length, params.count, Read)) != 0) {
+    if ((rv = allocate_buffer(id, requests, params)) != 0) {
         log_error("Failed to allocate buffers.\n");
         goto out_disconnect;
     }
@@ -118,7 +118,7 @@ out_end_request:
 
 out_deallocate_buffer:
     log_debug("de-allocating buffer\n");
-    deallocate_buffer(requests, params.count);
+    deallocate_buffer(requests, params);
 out_disconnect:
     log_debug("Disconnecting\n");
     if (role == ROLE_CLIENT)

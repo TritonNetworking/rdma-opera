@@ -228,7 +228,7 @@ void set_cpu_affinity() {
 }
 
 void print_usage(char *argv0) {
-    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
+    log_warning("Usage: %s [-b <block size>] [--mr <mr count>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
@@ -275,11 +275,14 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->port = DEFAULT_PORT;
     params->mode = MODE_LATENCY;
     params->warmup_count = DEFAULT_WARMUP_COUNT;
+    params->mr_count = DEFAULT_MR_COUNT;
     params->verbose = false;
 
     while (true) {
+#define OPT_MR_COUNT 1001
         static struct option long_options[] = {
             { "block_size", required_argument, 0, 'b' },
+            { "mr_count", required_argument, 0, OPT_MR_COUNT },
             { "repeat", required_argument, 0, 'r' },
             { "verb", required_argument, 0, 'v' },
             { "port", required_argument, 0, 'p' },
@@ -337,6 +340,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 }
 
                 break;
+            case OPT_MR_COUNT:
+                if (sscanf(optarg, "%zu", &(params->mr_count)) != 1) {
+                    goto invalid;
+                }
+
+                break;
             case 'V':
                 params->verbose = 1;
                 break;
@@ -357,6 +366,13 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
 
     if (optind + 1 == argc) {
         params->server = argv[optind];
+    }
+
+    // Validation of arguments
+    if (params->count % params->mr_count != 0) {
+        log_error("count must be a multiple of MR count.\n");
+        print_usage(argv[0]);
+        exit(EXIT_FAILURE);
     }
 
     return;
