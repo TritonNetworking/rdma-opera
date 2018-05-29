@@ -661,7 +661,8 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
 
     for (size_t n = 0; n < count; n++) {
         // In latency test, the tool always uses the same request.
-        size_t offset = params->mode == MODE_LATENCY ? 0 : n;
+        // size_t offset = params->mode == MODE_LATENCY ? 0 : n;
+        size_t offset = n;
         struct dccs_request *request = requests + offset;
         bool failed = false;
         if (n == count - 1) {   // Always signal the last request
