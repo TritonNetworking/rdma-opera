@@ -659,6 +659,20 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
 
     uint64_t start = get_cycles();
 
+#if 0
+    // Testing overhead
+    log_debug("Testing overhead of get_cycles().\n");
+    uint64_t *lats = malloc(count * sizeof(uint64_t));
+    for (size_t n = 0; n < count; n++) {
+        lats[n] = get_cycles() - start;
+    }
+    for (size_t n = 0; n < count; n++) {
+        log_debug("n = %zu, clock = %zu.\n", n, lats[n]);
+    }
+    log_debug("\n");
+    free(lats);
+#endif
+
     for (size_t n = 0; n < count; n++) {
         // In latency test, the tool always uses the same request.
         // size_t offset = params->mode == MODE_LATENCY ? 0 : n;
@@ -668,6 +682,10 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
         if (n == count - 1) {   // Always signal the last request
             flags |= IBV_SEND_SIGNALED;
         }
+
+#if 0
+        log_verbose("buf = %p, length = %zu, remote = %p.\n", request->buf, request->length, request->remote_addr);
+#endif
 
         switch (request->verb) {
             case Send:
@@ -701,6 +719,13 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
     }
 
     uint64_t end = get_cycles();
+
+#if VERBOSE_TIMING
+    for (size_t n = 0; n < count; n++) {
+        log_verbose("n = %zu, start = %zu, end = %zu, elapsed = %zu.\n", n, requests[n].start - start, requests[n].end - start, requests[n].end - requests[n].start);
+    }
+#endif
+
     log_debug("Time elapsed to send and wait all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / (double)clock_rate);
 
     return -failed_count;

@@ -7,7 +7,7 @@
 
 /* Program settings */
 #define DEBUG 1
-#define VERBOSE_TIMING 1
+#define VERBOSE_TIMING 0
 
 /* Machine configuration */
 // #define CPU_CLOCK_RATE 2400000000   // 2.4 GHz
