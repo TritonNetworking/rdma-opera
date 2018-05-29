@@ -6,6 +6,7 @@
 #define DCCS_PARAMETER
 
 #include <stdbool.h>
+#include <stdint.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
@@ -27,6 +28,7 @@ struct dccs_parameters {
 
     Mode mode;
     size_t warmup_count;
+    size_t mr_count;
     bool verbose;
 };
 

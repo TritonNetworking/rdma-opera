@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "dccs_config.h"
 #include "dccs_parameters.h"
@@ -191,7 +192,7 @@ uint64_t get_clock_rate() {
 
 double get_time_in_microseconds(uint64_t cycles) {
 #if USE_RDTSC
-    return (double)cycles / clock_rate * 1e6;
+    return (double)cycles / (double)clock_rate * 1e6;
 #else
     return (double)cycles / 1e3;
 #endif
@@ -227,7 +228,7 @@ void set_cpu_affinity() {
 }
 
 void print_usage(char *argv0) {
-    log_warning("Usage: %s [-b <block size>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
+    log_warning("Usage: %s [-b <block size>] [--mr <mr count>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
@@ -261,6 +262,17 @@ void print_parameters(struct dccs_parameters *params) {
 }
 
 /**
+ * Validate that condition holds; otherwise print the specified error message.
+ */
+#define dccs_validate(condition, argv, ...) { \
+    if (!(condition)) { \
+        log_error(__VA_ARGS__); \
+        print_usage((argv)[0]); \
+        exit(EXIT_FAILURE); \
+    } \
+}
+
+/**
  * Parse command line arguments.
  */
 void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
@@ -274,11 +286,14 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->port = DEFAULT_PORT;
     params->mode = MODE_LATENCY;
     params->warmup_count = DEFAULT_WARMUP_COUNT;
+    params->mr_count = DEFAULT_MR_COUNT;
     params->verbose = false;
 
     while (true) {
+#define OPT_MR_COUNT 1001
         static struct option long_options[] = {
             { "block_size", required_argument, 0, 'b' },
+            { "mr_count", required_argument, 0, OPT_MR_COUNT },
             { "repeat", required_argument, 0, 'r' },
             { "verb", required_argument, 0, 'v' },
             { "port", required_argument, 0, 'p' },
@@ -311,8 +326,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 } else if (strcmp(optarg, "write") == 0) {
                     params->verb = Write;
                 } else {
-                    print_usage(argv[0]);
-                    exit(EXIT_FAILURE);
+                    dccs_validate(false, argv, "verb must be 'read' or 'write'.\n");
                 }
 
                 break;
@@ -325,13 +339,18 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 } else if (strcmp(optarg, "throughput") == 0) {
                     params->mode = MODE_THROUGHPUT;
                 } else {
-                    print_usage(argv[0]);
-                    exit(EXIT_FAILURE);
+                    dccs_validate(false, argv, "mode must be 'latency' or 'throughput'.\n");
                 }
 
                 break;
             case 'w':
                 if (sscanf(optarg, "%zu", &(params->warmup_count)) != 1) {
+                    goto invalid;
+                }
+
+                break;
+            case OPT_MR_COUNT:
+                if (sscanf(optarg, "%zu", &(params->mr_count)) != 1) {
                     goto invalid;
                 }
 
@@ -344,9 +363,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 exit(EXIT_SUCCESS);
                 break;
             default:
-                log_error("Unrecognized option '%c'.\n", c);
-                print_usage(argv[0]);
-                exit(EXIT_FAILURE);
+                log_error(false, argv, "Unrecognized option '%c'.\n", c);
                 break;
         }
     }
@@ -357,6 +374,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     if (optind + 1 == argc) {
         params->server = argv[optind];
     }
+
+    // Validation of arguments
+    dccs_validate(params->count > 0, argv, "count must be a positive integer.\n");
+    dccs_validate(params->length > 0, argv, "length must be a positive integer.\n");
+    dccs_validate(params->mr_count > 0, argv, "mr count must be a positive integer.\n");
+    dccs_validate(params->count % params->mr_count == 0, argv, "count must be a multiple of MR count.\n");
 
     return;
 

@@ -191,10 +191,10 @@ int dccs_rdma_recv(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_
     return rv;
 }
 
-int dccs_rdma_read_with_flags(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey, int flags) {
+int dccs_rdma_read_with_flags(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey, int flags) {
     int rv;
     //log_debug("RDMA read ...\n");
-    if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
+    if ((rv = rdma_post_read(id, NULL, addr, length, mr, flags, remote_addr, rkey)) != 0) {
         log_perror("rdma_post_read");
     }
 
@@ -202,14 +202,14 @@ int dccs_rdma_read_with_flags(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t
     return rv;
 }
 
-static inline int dccs_rdma_read(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
-    return dccs_rdma_read_with_flags(id, mr, remote_addr, rkey, IBV_SEND_SIGNALED);
+static inline int dccs_rdma_read(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
+    return dccs_rdma_read_with_flags(id, addr, length, mr, remote_addr, rkey, IBV_SEND_SIGNALED);
 }
 
-int dccs_rdma_write_with_flags(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey, int flags) {
+int dccs_rdma_write_with_flags(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey, int flags) {
     int rv;
     // log_debug("RDMA write ...\n");
-    if ((rv = rdma_post_read(id, NULL, mr->addr, mr->length, mr, flags, remote_addr, rkey)) != 0) {
+    if ((rv = rdma_post_read(id, NULL, addr, length, mr, flags, remote_addr, rkey)) != 0) {
         log_perror("rdma_post_write");
     }
 
@@ -217,8 +217,8 @@ int dccs_rdma_write_with_flags(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_
     return rv;
 }
 
-static inline int dccs_rdma_write(struct rdma_cm_id *id, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
-    return dccs_rdma_write_with_flags(id, mr, remote_addr, rkey, IBV_SEND_SIGNALED);
+static inline int dccs_rdma_write(struct rdma_cm_id *id, void *addr, size_t length, struct ibv_mr *mr, uint64_t remote_addr, uint32_t rkey) {
+    return dccs_rdma_write_with_flags(id, addr, length, mr, remote_addr, rkey, IBV_SEND_SIGNALED);
 }
 
 /* RDMA completion event */
@@ -278,32 +278,44 @@ int dccs_rdma_recv_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
 /**
  * Allocate and register multiple buffers.
  */
-int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, size_t length, size_t count, Verb verb) {
+int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, struct dccs_parameters params) {
+    Verb verb = params.verb;
+    size_t count = params.count;
+    size_t length = params.length;
+    size_t count_per_mr = count / params.mr_count;
+    size_t buffer_length = count_per_mr * length;
+
+    struct ibv_mr *mr = NULL;
+    void *buf_base = NULL;
+
     for (size_t n = 0; n < count; n++) {
+        size_t offset = n % count_per_mr;
+        if (offset == 0) {
+            buf_base = malloc_random(buffer_length);
+
+            switch (verb) {
+                case Send:
+                    mr = dccs_reg_msgs(id, buf_base, buffer_length);
+                    break;
+                case Read:
+                    mr = dccs_reg_read(id, buf_base, buffer_length);
+                    break;
+                case Write:
+                    mr = dccs_reg_write(id, buf_base, buffer_length);
+                    break;
+                default:
+                    log_error("Unrecognized verb %d.\n", verb);
+                    break;
+            }
+        }
+
         struct dccs_request *request = requests + n;
-        void *buf = malloc_random(length);
+        void *buf = (void*)((uint8_t *)buf_base + offset * length);
 
         request->verb = verb;
         request->buf = buf;
         request->length = length;
-
-        switch (verb) {
-            case Send:
-                request->mr = dccs_reg_msgs(id, buf, length);
-                break;
-            case Read:
-                request->mr = dccs_reg_read(id, buf, length);
-                break;
-            case Write:
-                request->mr = dccs_reg_write(id, buf, length);
-                break;
-            default:
-                log_error("Unrecognized verb for request %zu.\n", n);
-                break;
-        }
-
-        if (request->mr == NULL)
-            return -1;
+        request->mr = mr;
     }
 
     return 0;
@@ -312,14 +324,17 @@ int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, size_t
 /**
  * De-allocate and de-register multiple buffers.
  */
-void deallocate_buffer(struct dccs_request *requests, size_t count) {
-    for (size_t n = 0; n < count; n++) {
-        struct dccs_request *request = requests + n;
-        if (request->mr != NULL)
-            dccs_dereg_mr(request->mr);
+void deallocate_buffer(struct dccs_request *requests, struct dccs_parameters params) {
+    size_t count = params.count;
+    size_t count_per_mr = count / params.mr_count;
 
-        if (request->buf != NULL)
-            free(request->buf);
+    for (size_t n = 0; n < count; n++) {
+        if (n % count_per_mr != 0)
+            continue;
+
+        struct dccs_request *request = requests + n;
+        dccs_dereg_mr(request->mr);
+        free(request->buf);
     }
 }
 
@@ -332,6 +347,8 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     struct ibv_mr *mr_count, *mr_array;
     struct ibv_wc wc;
     int rv = -1;
+
+    // TODO: only transmit one MR
 
 #if VERBOSE_TIMING
     uint64_t t = get_cycles();
@@ -428,10 +445,12 @@ out_free_buf:
 /**
  * Send RDMA MR information to remote peer.
  */
-int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, size_t count) {
+int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, size_t count, size_t length) {
     struct ibv_mr *mr_count, *mr_array;
     struct ibv_wc wc;
     int rv = -1;
+
+    // TODO: only transmit one MR
 
 #if VERBOSE_TIMING
     uint64_t t = get_cycles();
@@ -443,7 +462,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         struct dccs_mr_info *mr_info = mr_infos + n;
-        mr_info->addr = htonll((uint64_t)request->mr->addr);
+        mr_info->addr = htonll((uint64_t)request->mr->addr + n * length);
         mr_info->rkey = htonl(request->mr->rkey);
     }
 #if VERBOSE_TIMING
@@ -565,30 +584,6 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
     int rv;
     int failed_count = 0;
 
-    for (size_t n = 0; n < count; n++) {
-        struct dccs_request *request = requests + n;
-        switch (request->verb) {
-            case Send:
-                request->mr = dccs_reg_msgs(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            case Read:
-                request->mr = dccs_reg_read(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            case Write:
-                request->mr = dccs_reg_write(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            default:
-                log_warning("Unrecognized request (n = %zu).", n);
-                break;
-        }
-    }
-
     uint64_t start = get_cycles();
 
     for (size_t n = 0; n < count; n++) {
@@ -601,13 +596,13 @@ int send_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
                     failed_count++;
                 break;
             case Read:
-                rv = dccs_rdma_read(id, request->mr, request->remote_addr, request->remote_rkey);
+                rv = dccs_rdma_read(id, request->buf, request->length, request->mr, request->remote_addr, request->remote_rkey);
                 request->start = get_cycles();
                 if (rv != 0)
                     failed_count++;
                 break;
             case Write:
-                rv = dccs_rdma_write(id, request->mr, request->remote_addr, request->remote_rkey);
+                rv = dccs_rdma_write(id, request->buf, request->length, request->mr, request->remote_addr, request->remote_rkey);
                 request->start = get_cycles();
                 if (rv != 0)
                     failed_count++;
@@ -662,30 +657,6 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
             break;
     }
 
-    for (size_t n = 0; n < count; n++) {
-        struct dccs_request *request = requests + n;
-        switch (request->verb) {
-            case Send:
-                request->mr = dccs_reg_msgs(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            case Read:
-                request->mr = dccs_reg_read(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            case Write:
-                request->mr = dccs_reg_write(id, request->buf, request->length);
-                if (request->mr == NULL)
-                    failed_count++;
-                break;
-            default:
-                log_warning("Unrecognized request (n = %zu).", n);
-                break;
-        }
-    }
-
     uint64_t start = get_cycles();
 
     for (size_t n = 0; n < count; n++) {
@@ -702,10 +673,10 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
                 rv = dccs_rdma_send_with_flags(id, request->buf, request->length, request->mr, flags);
                 break;
             case Read:
-                rv = dccs_rdma_read_with_flags(id, request->mr, request->remote_addr, request->remote_rkey, flags);
+                rv = dccs_rdma_read_with_flags(id, request->buf, request->length, request->mr, request->remote_addr, request->remote_rkey, flags);
                 break;
             case Write:
-                rv = dccs_rdma_write_with_flags(id, request->mr, request->remote_addr, request->remote_rkey, flags);
+                rv = dccs_rdma_write_with_flags(id, request->buf, request->length, request->mr, request->remote_addr, request->remote_rkey, flags);
                 break;
             default:
                 log_warning("Unrecognized request (n = %zu).", n);
@@ -729,7 +700,7 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
     }
 
     uint64_t end = get_cycles();
-    log_debug("Time elapsed to send and wait all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / 2.4e9);
+    log_debug("Time elapsed to send and wait all requests: %.3f µsec.\n", (double)(end - start) * 1e6 / (double)clock_rate);
 
     return -failed_count;
 }
@@ -760,12 +731,12 @@ void print_sha1sum(struct dccs_request *requests, size_t count) {
 }
 
 void print_raw_latencies(double *latencies, size_t count) {
-    log_info("Raw latency (µsec):\n");
-    log_info("Start,End,Latency\n");
+    log_verbose("Raw latency (µsec):\n");
+    log_verbose("Start,End,Latency\n");
     for (size_t n = 0; n < count; n++)
-        log_info("%.3f\n", latencies[n]);
+        log_verbose("%.3f\n", latencies[n]);
 
-    log_info("\n");
+    log_verbose("\n");
 }
 
 /**

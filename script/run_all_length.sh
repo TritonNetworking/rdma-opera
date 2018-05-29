@@ -11,13 +11,14 @@ count=1000
 verb="read"
 mode="latency"
 warmup=0
+mr_count=1
 
 server="$1"
 
 cd ../build
 while [[ $l -le $limit ]]; do
     echo "Length = $l ..."
-    ./rdma_exec -b $l -r $count -v $verb -m $mode -w $warmup $server
+    ./rdma_exec -b $l -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count $server
     (( l *= 2 ))
     echo ""
 done
