@@ -264,17 +264,12 @@ void print_parameters(struct dccs_parameters *params) {
 /**
  * Validate that condition holds; otherwise print the specified error message.
  */
-void dccs_validate(bool condition, const char *argv[], const char *error_message, ...) {
-    if (condition)
-        return;
-
-    va_list arg;
-    va_start(arg, error_message);
-    vlog_level(LOG_ERROR, error_message, arg);
-    va_end(arg);
-
-    print_usage(argv[0]);
-    exit(EXIT_FAILURE);
+#define dccs_validate(condition, argv, ...) { \
+    if (!(condition)) { \
+        log_error(__VA_ARGS__); \
+        print_usage((argv)[0]); \
+        exit(EXIT_FAILURE); \
+    } \
 }
 
 /**
