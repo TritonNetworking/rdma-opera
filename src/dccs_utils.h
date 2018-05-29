@@ -262,6 +262,22 @@ void print_parameters(struct dccs_parameters *params) {
 }
 
 /**
+ * Validate that condition holds; otherwise print the specified error message.
+ */
+void dccs_validate(bool condition, const char *argv[], const char *error_message, ...) {
+    if (condition)
+        return;
+
+    va_list arg;
+    va_start(arg, error_message);
+    vlog_level(LOG_ERROR, error_message, arg);
+    va_end(arg);
+
+    print_usage(argv[0]);
+    exit(EXIT_FAILURE);
+}
+
+/**
  * Parse command line arguments.
  */
 void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
@@ -315,8 +331,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 } else if (strcmp(optarg, "write") == 0) {
                     params->verb = Write;
                 } else {
-                    print_usage(argv[0]);
-                    exit(EXIT_FAILURE);
+                    dccs_validate(false, argv, "verb must be 'read' or 'write'.\n");
                 }
 
                 break;
@@ -329,8 +344,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 } else if (strcmp(optarg, "throughput") == 0) {
                     params->mode = MODE_THROUGHPUT;
                 } else {
-                    print_usage(argv[0]);
-                    exit(EXIT_FAILURE);
+                    dccs_validate(false, argv, "mode must be 'latency' or 'throughput'.\n");
                 }
 
                 break;
@@ -354,9 +368,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 exit(EXIT_SUCCESS);
                 break;
             default:
-                log_error("Unrecognized option '%c'.\n", c);
-                print_usage(argv[0]);
-                exit(EXIT_FAILURE);
+                log_error(false, argv, "Unrecognized option '%c'.\n", c);
                 break;
         }
     }
@@ -369,11 +381,10 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     }
 
     // Validation of arguments
-    if (params->count % params->mr_count != 0) {
-        log_error("count must be a multiple of MR count.\n");
-        print_usage(argv[0]);
-        exit(EXIT_FAILURE);
-    }
+    dccs_validate(params->count > 0, argv, "count must be a positive integer.\n");
+    dccs_validate(params->length > 0, argv, "length must be a positive integer.\n");
+    dccs_validate(params->mr_count > 0, argv, "mr count must be a positive integer.\n");
+    dccs_validate(params->count % params->mr_count == 0, argv, "count must be a multiple of MR count.\n");
 
     return;
 
