@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [[ $# -gt 2 ]]; then
     echo "$0 [<server ip>]"

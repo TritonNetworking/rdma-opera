@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Parse command line arguments
 # Source: https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
@@ -15,6 +15,9 @@ case $key in
     CLEAN=true
     shift # past argument
     ;;
+    *)
+    echo "Unrecognized option $key"
+    exit 2
 esac
 done
 

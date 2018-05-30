@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Mellanox perftest test suite
 ib_read_lat -a -R -F $1
