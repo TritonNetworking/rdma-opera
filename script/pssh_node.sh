@@ -29,29 +29,30 @@ next_host="${host_list[$next_index]}"
 cd ../build
 echo "launch with option --hosts=$hosts --host=$curr_host --index=$curr_index --next-index=$next_index --next-host=$next_host"
 
+client=$curr_host
+server=$next_host
+client_log="${client}_to_${server}.client.out"
+server_log="${client}_to_${server}.server.out"
+
 # udaddy test
 : '
-udaddy &
+udaddy > $server_log &
 pid=$!
-udaddy -s $next_host
+udaddy -s $next_host > $client_log
 wait $pid
 #'
 
 # rdma_server test
 : '
-rdma_server &
+rdma_server > $server_log &
 pid=$!
-rdma_client -s $next_host
+rdma_client -s $next_host > $client_log
 wait $pid
 #'
 
 # Mallenox benchmark tool
 
 : '
-client=$curr_host
-server=$next_host
-client_log="${client}_to_${server}.client.out"
-server_log="${client}_to_${server}.server.out"
 duration="5s"
 ib_flags="-F -R -D $duration --report_gbits"
 

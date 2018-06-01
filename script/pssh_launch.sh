@@ -2,5 +2,8 @@
 
 hosts=$(cat hosts.config | paste -s -d " " -)
 
-pssh -i -H "$hosts" "cd ~/dccs/script; ./pssh_node.sh"
+DEFAULT_COMMAND="cd ~/dccs/script; ./pssh_node.sh"
+command=${1:-$DEFAULT_COMMAND}
+
+pssh -i -H "$hosts" $command
 
