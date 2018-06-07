@@ -76,3 +76,25 @@ sleep 1
 ib_write_bw $ib_flags $server | tee $client_log
 wait $pid
 #'
+
+# My benchmark tool
+#: '
+block_size=65536
+count=1000
+verb="write"
+mode="throughput"
+warmup=0
+mr_count=1
+#'
+
+
+# Bi-directional
+: '
+cd ../build
+./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count > $server_log 2>&1 &
+pid=$!
+sleep 1
+./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count $server > $client_log 2>&1 &
+wait $pid
+#'
+
