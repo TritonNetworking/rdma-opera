@@ -98,3 +98,38 @@ sleep 1
 wait $pid
 #'
 
+# 1-to-N
+# First node sends to the rest
+#: '
+base_port=5000
+if [[ $curr_index -eq 0 ]]; then
+    sleep 1
+    for i in "${!host_list[@]}"; do
+        if [[ $i -eq 0 ]]; then
+            continue
+        fi
+
+        client="${host_list[0]}"
+        server="${host_list[$i]}"
+        port=$(echo "$base_port + $i" | bc)
+        client_log="${client}_to_${server}.client.out"
+
+        echo "Launching client: ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count -p $port $server > $client_log 2>&1 &"
+        ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count -p $port $server > $client_log 2>&1 &
+        pids[$i]=$!
+    done
+
+    for pid in ${pids[*]}; do
+        wait $pid
+    done
+else
+    client=${host_list[0]}
+    server=${host_list[$curr_index]}
+    port=$(echo "$base_port + $curr_index" | bc)
+    server_log="${client}_to_${server}.server.out"
+
+    echo "Launching server: ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count -p $port > $server_log 2>&1"
+    ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count -p $port > $server_log 2>&1
+fi
+#'
+
