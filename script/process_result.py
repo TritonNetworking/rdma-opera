@@ -49,6 +49,7 @@ if args.log == 'mine':
                     latency_header = True
                     continue
                 if latency_header:
+                    print line
                     latency = transform_latency(line)
                     if int(latency[0]) != block_size:
                         raise ValueError('Inconsistent length in latency report')
@@ -88,16 +89,21 @@ if args.log == 'mine':
         x = np.array([block_size for block_size, _ in sorted(latencies.iteritems())])
         medians = np.array([latencies[block_size][3] for block_size, _ in sorted(latencies.iteritems())])
         stdevs = np.array([latencies[block_size][6] for block_size, _ in sorted(latencies.iteritems())])
-        plt.errorbar(x, medians, stdevs, marker='')
+        plt.errorbar(x, medians, stdevs, marker='.')
         plt.xscale('log')
+        plt.yscale('log')
         plt.show()
+
+        print 'size, median, min, max, median, stdev'
+        for block_size, value in sorted(latencies.iteritems()):
+            print '%d' % (block_size)
     else:
         x = np.array([block_size for block_size, _ in sorted(throughputs.iteritems())])
         y = np.array([throughput for _, throughput in sorted(throughputs.iteritems())])
         plt.plot(x, y, marker='o')
         plt.xscale('log')
         plt.show()
-else:
+else:   # Mellanox tool
     header = False
     with open(args.client_log) as f:
         for line in f:
