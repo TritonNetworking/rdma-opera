@@ -8,8 +8,8 @@ l=1
 limit=8388608
 
 count=1000
-verb="read"
-mode="latency"
+verb="write"
+mode="throughput"
 warmup=0
 mr_count=1
 

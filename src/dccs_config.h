@@ -6,7 +6,7 @@
 #define DCCS_CONFIG_H
 
 /* Program settings */
-#define DEBUG 1
+#define DEBUG 0
 #define VERBOSE_TIMING 0
 
 /* Machine configuration */
@@ -24,7 +24,7 @@
 #define DEFAULT_PORT "1234"
 #define DEFAULT_WARMUP_COUNT 0
 #define DEFAULT_MR_COUNT 1
-#define DEFAULT_REPEAT_COUNT 1
+#define DEFAULT_REPEAT_COUNT 1000
 
 /* Protocol configuration */
 #define DCCS_CYCLE_UPTIME 180   // Cycle up time, in µsec
