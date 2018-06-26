@@ -169,3 +169,51 @@ else
 fi
 #'
 
+# N-to-N
+# All to all traffic
+: '
+base_port=5000
+
+# Launch servers
+for i in "${!host_list[@]}"; do
+    if [[ $curr_index -eq $i ]]; then
+        continue
+    fi
+
+    client="${host_list[$i]}"
+    server="${host_list[$curr_index]}"
+    port=$(echo "$base_port + $i" | bc)
+    server_log="${client}_to_${server}.$port.server.out"
+
+    echo "Launching server: ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count -p $port > $server_log 2>&1 &"
+    ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count -p $port > $server_log 2>&1 &
+    spids[$i]=$!
+done
+
+sleep 1
+
+# Launch clients
+for i in "${!host_list[@]}"; do
+    if [[ $curr_index -eq $i ]]; then
+        continue
+    fi
+
+    client="${host_list[$curr_index]}"
+    server="${host_list[$i]}"
+    port=$(echo "$base_port + $curr_index" | bc)
+    client_log="${client}_to_${server}.$port.client.out"
+
+    echo "Launching client: ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count -p $port $server > $client_log 2>&1 &"
+    ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count -p $port $server > $client_log 2>&1 &
+    cpids[$i]=$!
+done
+
+# Wait for all clients and servers
+for pid in ${cpids[*]}; do
+    wait $pid
+done
+for pid in ${spids[*]}; do
+    wait $pid
+done
+#'
+
