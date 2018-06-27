@@ -57,7 +57,6 @@ int run(struct dccs_parameters params) {
         }
     }
 
-    start = get_cycles();
     for (size_t n = 0; n < DEFAULT_REPEAT_COUNT; n++) {
         log_info("Round %zu.\n", n + 1);
 
@@ -86,11 +85,7 @@ int run(struct dccs_parameters params) {
         } else {    // role == ROLE_SERVER
             // Server is passive in RDMA experiments, i.e. responder.
         }
-    }
 
-    end = get_cycles();
-
-    {
 out_end_request:
         // Synchronize end of a round
         if (role == ROLE_CLIENT) {
@@ -121,12 +116,6 @@ out_end_request:
                     break;
             }
         }
-
-        size_t transfered_bytes = (params.count - params.warmup_count) * params.length * DEFAULT_REPEAT_COUNT;
-        double elapsed_seconds = (double)(end- start) / (double)clock_rate;
-        double throughput_bytes_per_second = (double)transfered_bytes / elapsed_seconds;
-        double throughput_gbits = throughput_bytes_per_second * 8 / 1e9;
-        log_info("Transferred: %lu B, elapsed: %.3e s, throughput: %.3f Gbps.\n", transfered_bytes, elapsed_seconds, throughput_gbits);
     }
 
 out_deallocate_buffer:
