@@ -355,7 +355,7 @@ int get_remote_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
 #endif
     // Allocate array
     size_t array_size = count * sizeof(struct dccs_mr_info);
-    struct dccs_mr_info *mr_infos = malloc(array_size);
+    struct dccs_mr_info *mr_infos = (struct dccs_mr_info *)malloc(array_size);
     memset(mr_infos, 0, array_size);
 #if VERBOSE_TIMING
     t = get_cycles() - t;
@@ -456,7 +456,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
     uint64_t t = get_cycles();
 #endif
     size_t array_size = count * sizeof(struct dccs_mr_info);
-    struct dccs_mr_info *mr_infos = malloc(array_size);
+    struct dccs_mr_info *mr_infos = (struct dccs_mr_info *)malloc(array_size);
     memset(mr_infos, 0, array_size);
 
     for (size_t n = 0; n < count; n++) {
@@ -742,7 +742,7 @@ void print_sha1sum(struct dccs_request *requests, size_t count) {
     unsigned char digest[SHA_DIGEST_LENGTH];
 
     size_t length = requests[0].length;
-    void **array = malloc(count * sizeof(void *));
+    void **array = (void **)malloc(count * sizeof(void *));
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         array[n] = request->buf;
@@ -779,7 +779,7 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
     size_t count = params->count;
     size_t length = params->length;
 
-    double *latencies = malloc(count * sizeof(double));
+    double *latencies = (double *)malloc(count * sizeof(double));
 
     log_info("=====================\n");
     log_info("Latency Report\n");
