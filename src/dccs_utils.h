@@ -363,7 +363,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 exit(EXIT_SUCCESS);
                 break;
             default:
-                log_error(false, argv, "Unrecognized option '%c'.\n", c);
+                dccs_validate(false, argv, "Unrecognized option '%c'.\n", c);
                 break;
         }
     }
