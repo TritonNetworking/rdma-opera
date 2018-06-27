@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.5)
-project(rdma LANGUAGES CXX)
+project(rdma)
 
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wpedantic -Wconversion")
@@ -13,10 +13,10 @@ set(HEADER_FILES
         dccs_rdma.h
         dccs_utils.h
 )
-set_source_files_properties(rdma_main.c PROPERTIES LANGUAGE CXX)
+
 add_executable(rdma_exec
         ${HEADER_FILES}
-        rdma_main.c)
+        rdma_main.cc)
 
 target_link_libraries(rdma_exec m ssl crypto ibverbs rdmacm)
 
