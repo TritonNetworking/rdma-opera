@@ -20,9 +20,6 @@
 #include "dccs_config.h"
 #include "dccs_parameters.h"
 
-#include <string>
-using namespace std;
-
 extern uint64_t clock_rate;
 
 /* Logging functions */
@@ -125,7 +122,7 @@ void log_perror(const char *s) {
 }
 
 char *bin_to_hex_string(void *buf, size_t length) {
-    char *s = (char *)malloc(2 * length + 1);
+    char *s = malloc(2 * length + 1);
     unsigned char *c;
     char temp[3];
     for (size_t i = 0; i < length; i++) {
@@ -235,7 +232,7 @@ void print_usage(char *argv0) {
 }
 
 void print_parameters(struct dccs_parameters *params) {
-    const char *verb, *mode;
+    char *verb, *mode;
     switch (params->verb) {
         case Read:
             verb = "Read";
@@ -286,7 +283,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->count = DEFAULT_MESSAGE_COUNT;
     params->length = DEFAULT_MESSAGE_LENGTH;
     params->server = NULL;
-    params->port = (char *)DEFAULT_PORT;
+    params->port = DEFAULT_PORT;
     params->mode = MODE_LATENCY;
     params->warmup_count = DEFAULT_WARMUP_COUNT;
     params->mr_count = DEFAULT_MR_COUNT;
@@ -427,7 +424,7 @@ void *malloc_random(size_t size) {
  * Calculate the SHA1 digest of the given data.
  */
 void sha1sum(const void *data, size_t length, unsigned char digest[SHA_DIGEST_LENGTH]) {
-    SHA1((const unsigned char *)data, length, digest);
+    SHA1(data, length, digest);
 }
 
 /**

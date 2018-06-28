@@ -1,7 +1,6 @@
 // RDMA tool
 
-// This is already defined when using g++
-//#define _GNU_SOURCE
+#define _GNU_SOURCE
 
 #include <stdio.h>
 
@@ -16,8 +15,6 @@ int run(struct dccs_parameters params) {
     struct rdma_addrinfo *res;
     struct dccs_request *requests;
     int rv = 0;
-    uint64_t start, end;
-    size_t requests_size;
 
     Role role = params.server == NULL ? ROLE_SERVER : ROLE_CLIENT;
     if (role == ROLE_CLIENT)
@@ -34,8 +31,8 @@ int run(struct dccs_parameters params) {
     }
 
     log_debug("Allocating buffer ...\n");
-    requests_size = params.count * sizeof(struct dccs_request);
-    requests = (struct dccs_request *)malloc(requests_size);
+    size_t requests_size = params.count * sizeof(struct dccs_request);
+    requests = malloc(requests_size);
     memset(requests, 0, requests_size);
     if ((rv = allocate_buffer(id, requests, params)) != 0) {
         log_error("Failed to allocate buffers.\n");
