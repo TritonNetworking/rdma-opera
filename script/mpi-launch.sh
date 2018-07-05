@@ -32,12 +32,13 @@ verb="write"
 mode="throughput"
 warmup=0
 mr_count=1
+direction="1-N"
 
 # Launch MPI job
 set -x
 while [[ $l -le $limit ]]; do
     echo "Length = $l ..."
-    execflags="-b $l -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count"
+    execflags="-b $l -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count --direction=$direction"
     mpirun -np $np --host $hosts $FLAGS $execname $execflags
     (( l *= 2 ))
     echo ""

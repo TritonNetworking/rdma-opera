@@ -232,7 +232,7 @@ void print_usage(char *argv0) {
 }
 
 void print_parameters(struct dccs_parameters *params) {
-    char *verb, *mode;
+    char *verb, *mode, *direction;
     switch (params->verb) {
         case Read:
             verb = "Read";
@@ -257,8 +257,20 @@ void print_parameters(struct dccs_parameters *params) {
             break;
     }
 
+    switch (params->direction) {
+        case DIR_OUT:
+            direction = "1-N";
+            break;
+        case DIR_IN:
+            direction = "N-1";
+            break;
+        case DIR_BOTH:
+            direction = "N-N";
+            break;
+    }
+
     log_info("Config: verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
-    log_info("Config: mode = %s, warmup count = %zu, verbose = %d.\n", mode, params->warmup_count, params->verbose);
+    log_info("Config: mode = %s, warmup count = %zu, direction = %s, verbose = %d.\n", mode, params->warmup_count, direction, params->verbose);
 }
 
 /**
@@ -287,10 +299,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->mode = MODE_LATENCY;
     params->warmup_count = DEFAULT_WARMUP_COUNT;
     params->mr_count = DEFAULT_MR_COUNT;
+    params->direction = DEFAULT_DIRECTION;
     params->verbose = false;
 
     while (true) {
 #define OPT_MR_COUNT 1001
+#define OPT_DIRECTION 1002
         static struct option long_options[] = {
             { "block_size", required_argument, 0, 'b' },
             { "mr_count", required_argument, 0, OPT_MR_COUNT },
@@ -299,6 +313,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
             { "port", required_argument, 0, 'p' },
             { "mode", required_argument, 0, 'm' },
             { "warmup", required_argument, 0, 'w' },
+            { "direction", required_argument, 0, OPT_DIRECTION },
             { "verbose", no_argument, 0, 'V' },
             { "help", no_argument, 0, 'h' }
         };
@@ -355,8 +370,20 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 }
 
                 break;
+            case OPT_DIRECTION:
+                if (strcmp(optarg, "1-N") == 0) {
+                    params->direction = DIR_OUT;
+                } else if (strcmp(optarg, "N-1") == 0) {
+                    params->direction = DIR_IN;
+                } else if (strcmp(optarg, "N-N") == 0) {
+                    params->direction = DIR_BOTH;
+                } else {
+                    goto invalid;
+                }
+
+                break;
             case 'V':
-                params->verbose = 1;
+                params->verbose = true;
                 break;
             case 'h':
                 print_usage(argv[0]);
