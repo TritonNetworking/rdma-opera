@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.5)
 project(rdma)
 
+find_package(MPI REQUIRED)
+include_directories(SYSTEM ${MPI_INCLUDE_PATH})
+
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Wpedantic -Wconversion")
 set(default_build_type "Release")
@@ -18,5 +21,5 @@ add_executable(rdma_exec ${HEADER_FILES} rdma_main.c)
 target_link_libraries(rdma_exec m ssl crypto ibverbs rdmacm)
 
 add_executable(mpi_exec ${HEADER_FILES} mpi_main.c)
-target_link_libraries(mpi_exec m ssl crypto ibverbs rdmacm)
+target_link_libraries(mpi_exec m ssl crypto ibverbs rdmacm ${MPI_C_LIBRARIES})
 
