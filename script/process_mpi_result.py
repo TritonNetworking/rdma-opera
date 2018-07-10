@@ -10,6 +10,7 @@ parser.add_argument('-l', '--logfile', required=True, help='Log file')
 args = parser.parse_args()
 
 min_bytes = 0
+max_rank = 0
 
 entries = {}
 with open(args.logfile) as f:
@@ -36,6 +37,9 @@ with open(args.logfile) as f:
 
         bytes /= min_bytes
 
+        if rank > max_rank:
+            max_rank = rank
+
         if round < 2:
             continue
 
@@ -43,6 +47,7 @@ with open(args.logfile) as f:
             entries[bytes] = []
         entries[bytes].append([round, rank, elapsed, throughput])
 
+ranks = max_rank + 1
 avgs = {}
 stdevs = {}
 for k, v in entries.iteritems():
@@ -50,9 +55,10 @@ for k, v in entries.iteritems():
     arr = v
     t = {}
     for [round, rank, elapsed, throughput] in v:
-        if round not in t:
-            t[round] = 0
-        t[round] += throughput
+        # Use round if 1-N and N-1, and (round, rank) for N-N
+        if (round, rank) not in t:
+            t[(round, rank)] = 0
+        t[(round, rank)] += throughput
     avg = sum(t.itervalues()) / len(t)
     # print [v for v in t.itervalues()]
     stdev = np.std([v for v in t.itervalues()])
@@ -66,7 +72,7 @@ N = len(avgs)
 np_x = np.array([bytes for bytes, _ in sorted(avgs.iteritems())])
 np_avg = np.array([avg for _, avg in sorted(avgs.iteritems())])
 np_std = np.array([stdev for _, stdev in sorted(stdevs.iteritems())])
-plt.errorbar(np_x, np_avg, np_std, marker='.')
+plt.errorbar(np_x, np_avg, np_std, marker='.', linewidth=0.75)
 
 plt.xscale('log', basex=2)
 plt.ylim(0, 100)
