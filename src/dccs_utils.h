@@ -267,6 +267,9 @@ void print_parameters(struct dccs_parameters *params) {
         case DIR_BOTH:
             direction = "N-N";
             break;
+        default:
+            direction = "Unknown";
+            break;
     }
 
     log_info("Config: verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);

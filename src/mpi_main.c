@@ -34,7 +34,7 @@ int verify_checksum(const void *buf, size_t buffer_size, int rank, int size) {
     if (rank == 0) {
         //log_info("Verifying checksum ...\n");
         MPI_Status status;
-        for (size_t src = 1; src < size; src++) {
+        for (int src = 1; src < size; src++) {
             unsigned char remote_digest[SHA_DIGEST_LENGTH];
             MPI_Recv(remote_digest, SHA_DIGEST_LENGTH, MPI_CHAR, src, 0, MPI_COMM_WORLD, &status);
             if (strncmp((const void *)digest, (const void *)remote_digest, SHA_DIGEST_LENGTH) != 0) {
@@ -61,31 +61,32 @@ int send_messages(int size, int rank, const void *buf, struct dccs_parameters pa
         return -1;
     }
 
-    int request_count = 1;
+    size_t request_count = 1;
     if (to == HOST_ALL)
-        request_count = size;
+        request_count = (size_t)size;
     else if (to == HOST_NOSELF)
-        request_count = size - 1;
+        request_count = (size_t)(size - 1);
     MPI_Request requests[request_count * params.count];
 
 #if !MPI_FIRE_AND_FORGET
     int done = 0;
 #endif
     int request_sent = 0;
+    int length = (int)params.length;
     void *sendbuf;
     for (size_t n = 0; n < params.count; n++) {
         sendbuf = (void *)((uint8_t *)buf + n * params.length);
-        for (size_t dest = 0; dest < size; dest++) {
+        for (int dest = 0; dest < size; dest++) {
             if (to == HOST_NOSELF && dest == rank)
                 continue;
             else if (to != HOST_ALL && to != HOST_NOSELF && dest != to)
                 continue;
 
-            MPI_Isend(sendbuf, params.length, MPI_BYTE, dest, 0, MPI_COMM_WORLD, requests + request_sent);
+            MPI_Isend(sendbuf, length, MPI_BYTE, dest, 0, MPI_COMM_WORLD, requests + request_sent);
 #if MPI_FIRE_AND_FORGET
             MPI_Request_free(requests + request_sent);
 #endif
-            //MPI_Send(sendbuf, params.length, MPI_BYTE, dest, 0, MPI_COMM_WORLD);
+            //MPI_Send(sendbuf, length, MPI_BYTE, dest, 0, MPI_COMM_WORLD);
             *bytes_sent += params.length;
             request_sent++;
         }
@@ -107,26 +108,27 @@ int recv_messages(int size, int rank, const void *buf, struct dccs_parameters pa
         return -1;
     }
 
-    int request_count = 1;
+    size_t request_count = 1;
     if (from == HOST_ALL)
-        request_count = size;
+        request_count = (size_t)size;
     else if (from == HOST_NOSELF)
-        request_count = size - 1;
+        request_count = (size_t)(size - 1);
     MPI_Request requests[request_count * params.count];
 
     int done = 0;
     int request_sent = 0;
+    int length = (int)params.length;
     void *recvbuf;
     for (size_t n = 0; n < params.count; n++) {
         recvbuf = (void *)((uint8_t *)buf + n * params.length);
-        for (size_t src = 0; src < size; src++) {
+        for (int src = 0; src < size; src++) {
             if (from == HOST_NOSELF && src == rank)
                 continue;
             else if (from != HOST_ALL && from != HOST_NOSELF && src != from)
                 continue;
 
-            MPI_Irecv(recvbuf, params.length, MPI_BYTE, src, 0, MPI_COMM_WORLD, requests + request_sent);
-            //MPI_Recv(recvbuf, params.length, MPI_BYTE, source, 0, MPI_COMM_WORLD, &status);
+            MPI_Irecv(recvbuf, length, MPI_BYTE, src, 0, MPI_COMM_WORLD, requests + request_sent);
+            //MPI_Recv(recvbuf, length, MPI_BYTE, source, 0, MPI_COMM_WORLD, &status);
             *bytes_recvd += params.length;
             request_sent++;
         }
@@ -134,7 +136,8 @@ int recv_messages(int size, int rank, const void *buf, struct dccs_parameters pa
 
     //MPI_Waitall(request_count * params.count, requests, MPI_STATUSES_IGNORE);
     while (!done) {
-        MPI_Testall(request_count * params.count, requests, &done, MPI_STATUSES_IGNORE);
+        int total_count = (int)(request_count * params.count);
+        MPI_Testall(total_count, requests, &done, MPI_STATUSES_IGNORE);
     }
 
     return 0;
@@ -142,7 +145,7 @@ int recv_messages(int size, int rank, const void *buf, struct dccs_parameters pa
 
 int run(int size, int rank, struct dccs_parameters params) {
     int rv = 0;
-    void *buf, *sendbuf, *recvbuf;
+    void *buf;
     uint64_t start, end;
     bool should_send, should_recv;
     int send_target, recv_source;
@@ -171,6 +174,10 @@ int run(int size, int rank, struct dccs_parameters params) {
             send_target = HOST_NOSELF;
             recv_source = HOST_NOSELF;
             break;
+        default:
+            log_error("Unknown direction: %d.\n", params.direction);
+            exit(EXIT_FAILURE);
+            break;
     }
 
     //MPI_Barrier(MPI_COMM_WORLD);
@@ -183,9 +190,9 @@ int run(int size, int rank, struct dccs_parameters params) {
         bytes_sent = bytes_recvd = 0;
 
         if (should_send) {
-            start = get_cycles();
+            //start = get_cycles();
             send_messages(size, rank, buf, params, send_target, &bytes_sent);
-            end = get_cycles();
+            //end = get_cycles();
         }
 
         if (should_recv) {
@@ -195,9 +202,9 @@ int run(int size, int rank, struct dccs_parameters params) {
         }
 
         if (should_recv) {
-            double elapsed = (double)(end - start) / clock_rate;
+            double elapsed = (double)(end - start) / (double)clock_rate;
             double elapsed_usec = elapsed * 1e6;
-            double throughput_gbits = bytes_recvd * 8 / elapsed / (1024 * 1024 * 1024);
+            double throughput_gbits = (double)bytes_recvd * 8 / elapsed / (1024 * 1024 * 1024);
             log_info("round = %zu, rank = %d, bytes recv'd = %zu, elapsed = %.3fµsec, throughput = %.3f gbits.\n", r, rank, bytes_recvd, elapsed_usec, throughput_gbits);
         }
 

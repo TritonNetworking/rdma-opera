@@ -15,6 +15,10 @@ case $key in
     CLEAN=true
     shift # past argument
     ;;
+    -d|--debug)
+    DEBUG=true
+    shift # past argument
+    ;;
     *)
     echo "Unrecognized option $key"
     exit 2
@@ -26,8 +30,12 @@ mkdir -p ../build
 cd ../build
 
 if [ $FORCE ]; then
-    rm -r *
-    cmake ../src
+    rm -rf *
+    if [ $DEBUG ]; then
+        cmake -DCMAKE_BUILD_TYPE=Debug ../src
+    else
+        cmake -DCMAKE_BUILD_TYPE=Release ../src
+    fi
 fi
 
 if [ $CLEAN ]; then
