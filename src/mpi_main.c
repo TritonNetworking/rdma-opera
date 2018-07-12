@@ -54,7 +54,9 @@ int send_messages(int size, int rank, const void *buf, struct dccs_parameters pa
         request_count = size - 1;
     MPI_Request requests[request_count * params.count];
 
+#if !MPI_FIRE_AND_FORGET
     int done = 0;
+#endif
     int request_sent = 0;
     void *sendbuf;
     for (size_t n = 0; n < params.count; n++) {
@@ -66,16 +68,21 @@ int send_messages(int size, int rank, const void *buf, struct dccs_parameters pa
                 continue;
 
             MPI_Isend(sendbuf, params.length, MPI_BYTE, dest, 0, MPI_COMM_WORLD, requests + request_sent);
+#if MPI_FIRE_AND_FORGET
+            MPI_Request_free(requests + request_sent);
+#endif
             //MPI_Send(sendbuf, params.length, MPI_BYTE, dest, 0, MPI_COMM_WORLD);
             *bytes_sent += params.length;
             request_sent++;
         }
     }
 
+#if !MPI_FIRE_AND_FORGET
     //MPI_Waitall(request_count * params.count, requests, MPI_STATUSES_IGNORE);
     while (!done) {
         MPI_Testall(request_count * params.count, requests, &done, MPI_STATUSES_IGNORE);
     }
+#endif
 
     return 0;
 }

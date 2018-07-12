@@ -34,6 +34,7 @@
 #define DCCS_CYCLE_DOWNTIME 20  // Cycle down time, in µsec
 #define SYNC_END_MESSAGE "End"
 #define SYNC_END_MESSAGE_LENGTH 4
+#define MPI_FIRE_AND_FORGET 1
 
 /* Math constants */
 #define MILLION 1000000UL
