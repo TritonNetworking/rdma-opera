@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Check if MPI environment is loaded
+if ! [ -x "$(command -v mpirun)" ]; then
+    source ./setup-hpcx.sh
+fi
+
 # Parse command line arguments
 # Source: https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 while [[ $# -gt 0 ]]

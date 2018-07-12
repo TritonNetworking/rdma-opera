@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Check if MPI environment is loaded
+if ! [ -x "$(command -v mpirun)" ]; then
+    source ./setup-hpcx.sh
+fi
+
 # Config
 #execname=~/Source/rotornet-mpi/rlb_v1/rotor_test
 execname=../build/mpi_exec
