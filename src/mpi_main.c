@@ -6,12 +6,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <unistd.h>
 
 #include "dccs_utils.h"
 
 #define REPEAT 10
 
 uint64_t clock_rate = 0;    // Clock ticks per second
+
+void wait_for_gdb(int rank) {
+    if (rank != 0)
+        return;
+
+    int i = 0;
+    char hostname[256];
+    gethostname(hostname, sizeof(hostname));
+    printf("PID %d on %s ready for attach\n", getpid(), hostname);
+    fflush(stdout);
+    while (0 == i)
+        sleep(5);
+}
 
 int verify_checksum(const void *buf, size_t buffer_size, int rank, int size) {
     unsigned char digest[SHA_DIGEST_LENGTH];
@@ -216,6 +230,8 @@ int main(int argc, char *argv[]) {
     MPI_Init(&argc, &argv);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+
+    //wait_for_gdb(rank);
 
     rv = run(size, rank, params);
 
