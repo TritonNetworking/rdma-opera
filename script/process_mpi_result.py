@@ -7,7 +7,9 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', '--logfile', required=True, help='Log file')
+parser.add_argument('-m', '--metric', required=True, choices=[ 'latency', 'throughput' ], help='Which metric to plot, "latency" or "throughput"')
 args = parser.parse_args()
+
 
 min_bytes = 0
 max_rank = 0
@@ -58,7 +60,11 @@ for k, v in entries.iteritems():
         # Use round if 1-N and N-1, and (round, rank) for N-N
         if (round, rank) not in t:
             t[(round, rank)] = 0
-        t[(round, rank)] += throughput
+        if args.metric == 'latency':
+            metric = elapsed
+        elif args.metric == 'throughput':
+            metric = throughput
+        t[(round, rank)] += metric
     avg = sum(t.itervalues()) / len(t)
     # print [v for v in t.itervalues()]
     stdev = np.std([v for v in t.itervalues()])
