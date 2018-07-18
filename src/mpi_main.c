@@ -10,8 +10,6 @@
 
 #include "dccs_utils.h"
 
-#define REPEAT 10
-
 uint64_t clock_rate = 0;    // Clock ticks per second
 
 void wait_for_gdb(int rank) {
@@ -183,7 +181,7 @@ int run(int size, int rank, struct dccs_parameters params) {
     //MPI_Barrier(MPI_COMM_WORLD);
     //start = get_cycles();
 
-    for (size_t r = 0; r < REPEAT; r++) {
+    for (size_t r = 0; r < params.repeat; r++) {
         MPI_Barrier(MPI_COMM_WORLD);
 
         //buf = malloc_random(buffer_size);

@@ -35,6 +35,7 @@ limit=$((1024*1024*1024))
 count=1
 verb="write"
 mode="throughput"
+repeat=1000
 warmup=0
 mr_count=1
 direction="1-N"
@@ -43,7 +44,7 @@ direction="1-N"
 set -x
 while [[ $l -le $limit ]]; do
     echo "Length = $l ..."
-    execflags="-b $l -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count --direction=$direction"
+    execflags="-b $l -c $count -v $verb -m $mode -c $repeat -w $warmup --mr_count=$mr_count --direction=$direction"
     mpirun -np $np --host $hosts $FLAGS $execname $execflags
     (( l *= 2 ))
     echo ""

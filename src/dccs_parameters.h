@@ -24,6 +24,7 @@ struct dccs_parameters {
     Verb verb;
     size_t count;
     size_t length;
+    size_t repeat;
     char *server;
     char *port;
 

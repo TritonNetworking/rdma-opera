@@ -53,7 +53,7 @@ int run(struct dccs_parameters params) {
         }
     }
 
-    for (size_t n = 0; n < DEFAULT_REPEAT_COUNT; n++) {
+    for (size_t n = 0; n < params.repeat; n++) {
         log_info("Round %zu.\n", n + 1);
 
         if (role == ROLE_CLIENT) {
