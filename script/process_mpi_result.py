@@ -163,23 +163,29 @@ def plot_rdma_logfile(logfile):
 
     return (min(np_x), max(np_x))
 
+minxs = []
+maxxs = []
 if args.mpi_logs:
     for logfile in args.mpi_logs:
-        plot_mpi_logfile(logfile)
+        minx, maxx = plot_mpi_logfile(logfile)
+        minxs.append(minx)
+        maxxs.append(maxx)
 if args.rdma_logs:
     for logfile in args.rdma_logs:
-        plot_rdma_logfile(logfile)
+        minx, maxx = plot_rdma_logfile(logfile)
+        minxs.append(minx)
+        maxxs.append(maxx)
 
 plt.xlabel('Message size per node (bytes)')
 plt.xscale('log', basex=2)
 #if args.metric == 'latency':
 #    plt.yscale('log', basey=10)
 
-#plt.xlim(min(np_x), max(np_x))
-plt.xlim(1, pow(2, 18))
+plt.xlim(min(minxs), max(maxxs))
+#plt.xlim(1, pow(2, 20))
 if args.metric == 'latency':
     plt.ylabel('Latency (usec)')
-    plt.ylim(0, 40)
+#    plt.ylim(0, 40)
 else:
     plt.ylabel('Throughput (Gbps)')
     plt.ylim(0, 100)
