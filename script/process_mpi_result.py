@@ -5,9 +5,6 @@ import argparse, re, os
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Note: Make sure this is the same as set in the program
-ROUNDS = 10
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--mpi-logs', required=False, nargs='+', type=argparse.FileType('r'), help='MPI Log file')
 parser.add_argument('--rdma-logs', required=False, nargs='+', type=argparse.FileType('r'), help='Mellanox RDMA Log file')
@@ -18,6 +15,7 @@ args = parser.parse_args()
 def plot_mpi_logfile(logfile):
     min_bytes = 0
     max_rank = 0
+    max_round = 0
 
     entries = {}
     #with open(logfile) as f:
@@ -48,19 +46,21 @@ def plot_mpi_logfile(logfile):
             if rank > max_rank:
                 max_rank = rank
 
-            if round < 2 or round >= ROUNDS - 1:
-                continue
+            if round > max_round:
+                max_round = round
 
             if bytes not in entries:
                 entries[bytes] = []
             entries[bytes].append([round, rank, elapsed, throughput])
 
     ranks = max_rank + 1
+    rounds = max_round + 1
     data = {}
     stdevs = {}
     for k, v in entries.iteritems():
         bytes = k
-        arr = v
+        #arr = v[2:]    # Skip the first two, as they are warm up runs.
+        arr = v[2:-1]   # Skip the first two and the last one, as it's sometimes longer than the rest.
         t = {}
         for [round, rank, elapsed, throughput] in v:
             # Use round if 1-N and N-1, and (round, rank) for N-N
@@ -119,7 +119,7 @@ def plot_rdma_logfile(logfile):
 
                     #print line
                     #print [x for x in filter(None, line.strip().split(' '))]
-                    arr = [float(x) for x in filter(None, line.strip().split(' '))]
+                    arr = [float(x) for x in filter(None, line.strip().split())]
                     bytes = int(arr[0])
                     avgv = arr[5]
                     minv = arr[2]
