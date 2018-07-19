@@ -5,6 +5,22 @@ if ! [ -x "$(command -v mpirun)" ]; then
     source ./setup-hpcx.sh
 fi
 
+# Parse command line argument
+while [[ $# -gt 0 ]]
+do
+key="$1"
+
+case $key in
+    -y|--yalla)
+    YALLA=true
+    shift # past argument
+    ;;
+    *)
+    echo "Unrecognized option $key"
+    exit 2
+esac
+done
+
 # Config
 #execname=~/Source/rotornet-mpi/rlb_v1/rotor_test
 execname=../build/mpi_exec
@@ -19,7 +35,9 @@ FLAGS+="-mca btl_openib_warn_default_gid_prefix 0 "
 FLAGS+="-mca btl_openib_warn_no_device_params_found 0 "
 FLAGS+="--report-bindings --allow-run-as-root -bind-to core "
 FLAGS+="-mca coll_fca_enable 0 -mca coll_hcoll_enable 0 "
-#FLAGS+="-mca pml yalla "
+if [ $YALLA ]; then
+    FLAGS+="-mca pml yalla "
+fi
 FLAGS+="-mca mtl_mxm_np 0 -x MXM_TLS=ud,shm,self -x MXM_RDMA_PORTS=$HCAS "
 FLAGS+="-x MXM_LOG_LEVEL=ERROR -x MXM_IB_PORTS=$HCAS "
 FLAGS+="-x MXM_IB_MAP_MODE=round-robin -x MXM_IB_USE_GRH=y "
