@@ -10,6 +10,9 @@
 
 #include "dccs_utils.h"
 
+#define MPI_USE_ASYNC_VERB 1    // Whether to use asynchronous send/recv
+#define MPI_USE_WAIT 0          // Whether to use wait (or test)
+
 uint64_t clock_rate = 0;    // Clock ticks per second
 
 void wait_for_gdb(int rank) {
@@ -59,17 +62,16 @@ int send_messages(int size, int rank, const void *buf, struct dccs_parameters pa
         return -1;
     }
 
+#if MPI_USE_ASYNC_VERB
     size_t request_count = 1;
     if (to == HOST_ALL)
         request_count = (size_t)size;
     else if (to == HOST_NOSELF)
         request_count = (size_t)(size - 1);
     MPI_Request requests[request_count * params.count];
-
-#if !MPI_FIRE_AND_FORGET
-    int done = 0;
-#endif
     int request_sent = 0;
+#endif
+
     int length = (int)params.length;
     void *sendbuf;
     for (size_t n = 0; n < params.count; n++) {
@@ -80,21 +82,28 @@ int send_messages(int size, int rank, const void *buf, struct dccs_parameters pa
             else if (to != HOST_ALL && to != HOST_NOSELF && dest != to)
                 continue;
 
+#if MPI_USE_ASYNC_VERB
             MPI_Isend(sendbuf, length, MPI_BYTE, dest, 0, MPI_COMM_WORLD, requests + request_sent);
 #if MPI_FIRE_AND_FORGET
             MPI_Request_free(requests + request_sent);
 #endif
-            //MPI_Send(sendbuf, length, MPI_BYTE, dest, 0, MPI_COMM_WORLD);
-            *bytes_sent += params.length;
             request_sent++;
+#else
+            MPI_Send(sendbuf, length, MPI_BYTE, dest, 0, MPI_COMM_WORLD);
+#endif
+            *bytes_sent += params.length;
         }
     }
 
-#if !MPI_FIRE_AND_FORGET
-    //MPI_Waitall(request_count * params.count, requests, MPI_STATUSES_IGNORE);
+#if MPI_USE_ASYNC_VERB && !MPI_FIRE_AND_FORGET
+#if MPI_USE_WAIT
+    MPI_Waitall(request_count * params.count, requests, MPI_STATUSES_IGNORE);
+#else
+    int done = 0;
     while (!done) {
         MPI_Testall(request_count * params.count, requests, &done, MPI_STATUSES_IGNORE);
     }
+#endif
 #endif
 
     return 0;
@@ -106,15 +115,16 @@ int recv_messages(int size, int rank, const void *buf, struct dccs_parameters pa
         return -1;
     }
 
+#if MPI_USE_ASYNC_VERB
     size_t request_count = 1;
     if (from == HOST_ALL)
         request_count = (size_t)size;
     else if (from == HOST_NOSELF)
         request_count = (size_t)(size - 1);
     MPI_Request requests[request_count * params.count];
-
-    int done = 0;
     int request_sent = 0;
+#endif
+
     int length = (int)params.length;
     void *recvbuf;
     for (size_t n = 0; n < params.count; n++) {
@@ -125,18 +135,27 @@ int recv_messages(int size, int rank, const void *buf, struct dccs_parameters pa
             else if (from != HOST_ALL && from != HOST_NOSELF && src != from)
                 continue;
 
+#if MPI_USE_ASYNC_VERB
             MPI_Irecv(recvbuf, length, MPI_BYTE, src, 0, MPI_COMM_WORLD, requests + request_sent);
-            //MPI_Recv(recvbuf, length, MPI_BYTE, source, 0, MPI_COMM_WORLD, &status);
-            *bytes_recvd += params.length;
             request_sent++;
+#else
+            MPI_Recv(recvbuf, length, MPI_BYTE, src, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+#endif
+            *bytes_recvd += params.length;
         }
     }
 
-    //MPI_Waitall(request_count * params.count, requests, MPI_STATUSES_IGNORE);
+#if MPI_USE_ASYNC_VERB
+#if MPI_USE_WAIT
+    MPI_Waitall(request_count * params.count, requests, MPI_STATUSES_IGNORE);
+#else
+    int done = 0;
     while (!done) {
         int total_count = (int)(request_count * params.count);
         MPI_Testall(total_count, requests, &done, MPI_STATUSES_IGNORE);
     }
+#endif
+#endif
 
     return 0;
 }
