@@ -135,7 +135,7 @@ def plot_rdma_logfile(logfile):
                     if '-------' in line:
                         break
 
-                    arr = [float(x) for x in filter(None, line.strip().split(' '))]
+                    arr = [float(x) for x in filter(None, line.strip().split())]
                     bytes = int(arr[0])
                     avgv = arr[3]
                     minv = 0

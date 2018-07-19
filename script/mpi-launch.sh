@@ -44,7 +44,7 @@ direction="1-N"
 set -x
 while [[ $l -le $limit ]]; do
     echo "Length = $l ..."
-    execflags="-b $l -c $count -v $verb -m $mode -c $repeat -w $warmup --mr_count=$mr_count --direction=$direction"
+    execflags="-b $l -c $count -v $verb -m $mode -r $repeat -w $warmup --mr_count=$mr_count --direction=$direction"
     mpirun -np $np --host $hosts $FLAGS $execname $execflags
     (( l *= 2 ))
     echo ""
