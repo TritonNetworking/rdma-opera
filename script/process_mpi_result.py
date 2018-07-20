@@ -12,6 +12,8 @@ parser.add_argument('-m', '--metric', required=True, choices=[ 'latency', 'throu
 parser.add_argument('-s', '--stats', required=True, choices=[ 'avg', 'errorbar', 'min', 'max' ], nargs='+', help='Which stat to print, "avg", "errorbar", "min", or "max"')
 args = parser.parse_args()
 
+WARMUP = 2
+
 def plot_mpi_logfile(logfile):
     min_bytes = 0
     max_rank = 0
@@ -59,8 +61,8 @@ def plot_mpi_logfile(logfile):
     stdevs = {}
     for k, v in entries.iteritems():
         bytes = k
-        #arr = v[2:]    # Skip the first two, as they are warm up runs.
-        arr = v[2:-1]   # Skip the first two and the last one, as it's sometimes longer than the rest.
+        #arr = v[WARMUP:]    # Skip the first two, as they are warm up runs.
+        arr = v[WARMUP:-1]   # Skip the first two and the last one, as it's sometimes longer than the rest.
         t = {}
         for [round, rank, elapsed, throughput] in v:
             # Use round if 1-N and N-1, and (round, rank) for N-N
@@ -101,7 +103,7 @@ def plot_mpi_logfile(logfile):
     if 'max' in args.stats:
         plt.plot(np_x, np_max, label='%s - max' % name, marker=".", linewidth=0.75)
 
-    return (min(np_x), max(np_x))
+    return (min(np_x), max(np_x), rounds)
 
 def plot_rdma_logfile(logfile):
     data = {}
@@ -167,7 +169,7 @@ minxs = []
 maxxs = []
 if args.mpi_logs:
     for logfile in args.mpi_logs:
-        minx, maxx = plot_mpi_logfile(logfile)
+        minx, maxx, rounds = plot_mpi_logfile(logfile)
         minxs.append(minx)
         maxxs.append(maxx)
 if args.rdma_logs:
@@ -190,18 +192,14 @@ else:
     plt.ylabel('Throughput (Gbps)')
     plt.ylim(0, 100)
 
-#if len(args.mpi_logs) + len(args.rdma_logs) == 1:
-    #name = os.path.basename(args.logfiles[0].name).split('.')[0]
-    #plt.title(name + ' Traffic, 2 + 8 iterations')
-#    0
-#else:
-#    plt.title('MPI Traffic, 2 + 8 iterations')
 if not args.rdma_logs:
-    plt.title('MPI Traffic, 2 + 8 iterations')
+    prefix = 'MPI'
 elif not args.mpi_logs:
-    plt.title('RDMA Traffic, 2 + 8 iterations')
+    prefix = 'RDMA'
 else:
-    plt.title('MPI/RDMA Traffic, 2 + 8 iterations')
+    prefix = 'MPI/RDMA'
+postfix = '%d iterations' % rounds
+plt.title('%s %s, %s' % (prefix, args.metric.title(), postfix))
 
 plt.legend()
 
