@@ -138,8 +138,8 @@ def plot_rdma_logfile(logfile):
                     arr = [float(x) for x in filter(None, line.strip().split())]
                     bytes = int(arr[0])
                     avgv = arr[3]
-                    minv = 0
-                    maxv = 0
+                    minv = avgv
+                    maxv = avgv
                     stdev = 0
                     data[bytes] = (minv, avgv, maxv)
                     stdevs[bytes] = stdev
