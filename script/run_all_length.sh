@@ -8,7 +8,7 @@ l=1
 limit=8388608
 
 count=1000
-verb="write"
+verb="read"
 mode="throughput"
 repeat=1
 warmup=0
