@@ -228,11 +228,11 @@ void set_cpu_affinity() {
 }
 
 void print_usage(char *argv0) {
-    log_warning("Usage: %s [-b <block size>] [--mr <mr count>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
+    log_warning("Usage: %s [-b <block size>] [-c count] [--mr <mr count>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
-    char *verb, *mode;
+    char *verb, *mode, *direction;
     switch (params->verb) {
         case Read:
             verb = "Read";
@@ -257,8 +257,23 @@ void print_parameters(struct dccs_parameters *params) {
             break;
     }
 
+    switch (params->direction) {
+        case DIR_OUT:
+            direction = "1-N";
+            break;
+        case DIR_IN:
+            direction = "N-1";
+            break;
+        case DIR_BOTH:
+            direction = "N-N";
+            break;
+        default:
+            direction = "Unknown";
+            break;
+    }
+
     log_info("Config: verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
-    log_info("Config: mode = %s, warmup count = %zu, verbose = %d.\n", mode, params->warmup_count, params->verbose);
+    log_info("Config: mode = %s, repeat = %zu, warmup count = %zu, direction = %s, verbose = %d.\n", mode, params->repeat, params->warmup_count, direction, params->verbose);
 }
 
 /**
@@ -285,25 +300,30 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->server = NULL;
     params->port = DEFAULT_PORT;
     params->mode = MODE_LATENCY;
+    params->repeat = DEFAULT_REPEAT_COUNT;
     params->warmup_count = DEFAULT_WARMUP_COUNT;
     params->mr_count = DEFAULT_MR_COUNT;
+    params->direction = DEFAULT_DIRECTION;
     params->verbose = false;
 
     while (true) {
 #define OPT_MR_COUNT 1001
+#define OPT_DIRECTION 1002
         static struct option long_options[] = {
             { "block_size", required_argument, 0, 'b' },
             { "mr_count", required_argument, 0, OPT_MR_COUNT },
-            { "repeat", required_argument, 0, 'r' },
+            { "count", required_argument, 0, 'c' },
             { "verb", required_argument, 0, 'v' },
             { "port", required_argument, 0, 'p' },
             { "mode", required_argument, 0, 'm' },
+            { "repeat", required_argument, 0, 'r' },
             { "warmup", required_argument, 0, 'w' },
+            { "direction", required_argument, 0, OPT_DIRECTION },
             { "verbose", no_argument, 0, 'V' },
             { "help", no_argument, 0, 'h' }
         };
 
-        c = getopt_long(argc, argv, "b:r:v:p:m:w:Vh", long_options, NULL);
+        c = getopt_long(argc, argv, "b:c:v:p:m:r:w:Vh", long_options, NULL);
         if (c == -1)
             break;
 
@@ -314,7 +334,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 }
 
                 break;
-            case 'r':
+            case 'c':
                 if (sscanf(optarg, "%zu", &(params->count)) != 1) {
                     goto invalid;
                 }
@@ -343,6 +363,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 }
 
                 break;
+            case 'r':
+                if (sscanf(optarg, "%zu", &(params->repeat)) != 1) {
+                    goto invalid;
+                }
+
+                break;
             case 'w':
                 if (sscanf(optarg, "%zu", &(params->warmup_count)) != 1) {
                     goto invalid;
@@ -355,8 +381,20 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 }
 
                 break;
+            case OPT_DIRECTION:
+                if (strcmp(optarg, "1-N") == 0) {
+                    params->direction = DIR_OUT;
+                } else if (strcmp(optarg, "N-1") == 0) {
+                    params->direction = DIR_IN;
+                } else if (strcmp(optarg, "N-N") == 0) {
+                    params->direction = DIR_BOTH;
+                } else {
+                    goto invalid;
+                }
+
+                break;
             case 'V':
-                params->verbose = 1;
+                params->verbose = true;
                 break;
             case 'h':
                 print_usage(argv[0]);
@@ -380,6 +418,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     dccs_validate(params->length > 0, argv, "length must be a positive integer.\n");
     dccs_validate(params->mr_count > 0, argv, "mr count must be a positive integer.\n");
     dccs_validate(params->count % params->mr_count == 0, argv, "count must be a multiple of MR count.\n");
+    dccs_validate(params->repeat > 0, argv, "repeat must be a positive integer.\n");
 
     return;
 

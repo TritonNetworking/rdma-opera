@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 
+# Check if MPI environment is loaded
+if ! [ -x "$(command -v mpirun)" ]; then
+    source ./setup-hpcx.sh
+fi
+
 # Parse command line arguments
 # Source: https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 while [[ $# -gt 0 ]]
@@ -15,6 +20,10 @@ case $key in
     CLEAN=true
     shift # past argument
     ;;
+    -d|--debug)
+    DEBUG=true
+    shift # past argument
+    ;;
     *)
     echo "Unrecognized option $key"
     exit 2
@@ -26,8 +35,12 @@ mkdir -p ../build
 cd ../build
 
 if [ $FORCE ]; then
-    rm -r *
-    cmake ../src
+    rm -rf *
+    if [ $DEBUG ]; then
+        cmake -DCMAKE_BUILD_TYPE=Debug ../src
+    else
+        cmake -DCMAKE_BUILD_TYPE=Release ../src
+    fi
 fi
 
 if [ $CLEAN ]; then

@@ -792,7 +792,7 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         uint64_t elapsed_cycles = request->end - request->start;
-        double start = (double)request->start * MILLION / (double)clock_rate;
+        //double start = (double)request->start * MILLION / (double)clock_rate;
         double end = (double)request->end * MILLION / (double)clock_rate;
         double latency = (double)elapsed_cycles * MILLION / (double)clock_rate;
         if (end - first_start <= DCCS_CYCLE_UPTIME)
