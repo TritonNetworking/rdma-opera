@@ -2,8 +2,10 @@
 
 # Check if MPI environment is loaded
 if ! [ -x "$(command -v mpirun)" ]; then
-    source ./setup-hpcx.sh
+    source ../setup-hpcx.sh
 fi
+
+source ./config
 
 # Default command line argument
 YALLA=false
@@ -40,7 +42,7 @@ esac
 done
 
 # Config
-hostfile=hosts.config
+hostfile=$HOSTS_PATH
 hosts=$(cat $hostfile| paste -s -d "," -)
 np=$(cat $hostfile | wc -l)
 
@@ -71,7 +73,7 @@ run_roter_test() {
 }
 
 run_microbenchmark() {
-    execname=../build/mpi_exec
+    execname=$BENCH_EXEC_DIR/mpi_exec
 
     # Executable flags
     l=1

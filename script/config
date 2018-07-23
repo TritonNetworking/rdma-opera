@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+REPO_DIR=~/Source/dccs
+BUILD_DIR="$REPO_DIR/build"
+SCRIPT_DIR="$REPO_DIR/script"
+HOSTS_PATH="$SCRIPT_DIR/hosts.config"
+

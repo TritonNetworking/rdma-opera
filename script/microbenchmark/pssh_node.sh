@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
 
+source ./config
+
 # Configuration
 host=$(hostname -s)
-hosts=$(cat hosts.config | paste -s -d "," -)
-host_list=($(cat hosts.config))
+hostfile=$HOSTS_PATH
+hosts=$(cat $hostfile | paste -s -d "," -)
+host_list=($(cat $HOSTS_PATH))
 host_count=${#host_list[@]}
 
 # find the index
@@ -26,7 +29,7 @@ next_index=$(echo "($curr_index + 1) % $host_count" | bc)
 next_host="${host_list[$next_index]}"
 
 # Launch
-cd ../build
+cd $BUILD_DIR
 echo "launch with option --hosts=$hosts --host=$curr_host --index=$curr_index --next-index=$next_index --next-host=$next_host"
 
 client=$curr_host
@@ -85,12 +88,14 @@ verb="write"
 mode="throughput"
 warmup=0
 mr_count=1
+
+cd $BENCH_EXEC_DIR
 #'
 
 
 # Bi-directional
 : '
-cd ../build
+cd $BUILD_DIR
 ./rdma_exec -b $block_size -r $count -v $verb -m $mode -w $warmup --mr_count=$mr_count > $server_log 2>&1 &
 pid=$!
 sleep 1
