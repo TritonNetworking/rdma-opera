@@ -1,5 +1,15 @@
 #!/usr/bin/env bash
 
+# Program Configuration
+# This seems to have problems, so maybe just enable them per program instead of exporting them here.
+USE_HUGEPAGES=false
+if $USE_HUGEPAGES; then
+    >&2 echo "Use huge pages ..."
+    export LD_PRELOAD=libhugetlbfs.so
+    export HUGETLB_MORECORE=yes
+fi
+
+# Repo directory setup
 REPO_DIR=~/Source/dccs
 BUILD_DIR="$REPO_DIR/build"
 SCRIPT_DIR="$REPO_DIR/script"
