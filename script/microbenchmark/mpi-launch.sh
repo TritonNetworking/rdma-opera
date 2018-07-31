@@ -9,6 +9,7 @@ source ./config
 
 # Default command line argument
 YALLA=false
+UCX=false
 PROGRAM="benchmark"
 
 # Parse command line argument
@@ -19,6 +20,10 @@ key="$1"
 case $key in
     -y|--yalla)
         YALLA=true
+        shift # past argument
+        ;;
+    -u|--ucx)
+        UCX=true
         shift # past argument
         ;;
     -m|--mode)
@@ -58,6 +63,9 @@ FLAGS+="--report-bindings --allow-run-as-root -bind-to core "
 FLAGS+="-mca coll_fca_enable 0 -mca coll_hcoll_enable 0 "
 if $YALLA; then
     FLAGS+="-mca pml yalla "
+fi
+if $UCX; then
+    FLAGS+="-mca pml ucx -mca osc ucx "
 fi
 FLAGS+="-mca mtl_mxm_np 0 -x MXM_TLS=ud,shm,self -x MXM_RDMA_PORTS=$HCAS "
 FLAGS+="-x MXM_LOG_LEVEL=ERROR -x MXM_IB_PORTS=$HCAS "
