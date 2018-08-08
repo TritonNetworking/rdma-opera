@@ -12,7 +12,6 @@ uint64_t clock_rate = 0;    // Clock ticks per second
 
 int run(struct dccs_parameters params) {
     struct rdma_cm_id *listen_id = NULL, *id;
-    struct rdma_addrinfo *res;
     struct dccs_request *requests;
     int rv = 0;
 
@@ -23,10 +22,10 @@ int run(struct dccs_parameters params) {
         log_info("Running in server mode ...\n");
 
     if (role == ROLE_CLIENT) {
-        if ((rv = dccs_connect(&id, &res, params.server, params.port)) != 0)
+        if ((rv = dccs_connect(&id, params.server, params.port)) != 0)
             goto end;
     } else {    // role == ROLE_SERVER
-        if ((rv = dccs_listen(&listen_id, &id, &res, params.port)) != 0)
+        if ((rv = dccs_listen(&listen_id, &id, params.port)) != 0)
             goto end;
     }
 
@@ -54,7 +53,7 @@ int run(struct dccs_parameters params) {
         }
     }
 
-    for (size_t n = 0; n < DEFAULT_REPEAT_COUNT; n++) {
+    for (size_t n = 0; n < params.repeat; n++) {
         log_info("Round %zu.\n", n + 1);
 
         if (role == ROLE_CLIENT) {
@@ -115,16 +114,15 @@ out_end_request:
         }
     }
 
-
 out_deallocate_buffer:
     log_debug("de-allocating buffer\n");
     deallocate_buffer(requests, params);
 out_disconnect:
     log_debug("Disconnecting\n");
     if (role == ROLE_CLIENT)
-        dccs_client_disconnect(id, res);
+        dccs_client_disconnect(id);
     else    // role == ROLE_SERVER
-        dccs_server_disconnect(id, listen_id, res);
+        dccs_server_disconnect(id, listen_id);
 end:
     return rv;
 }

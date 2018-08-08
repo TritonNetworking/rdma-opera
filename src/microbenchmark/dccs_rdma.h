@@ -28,14 +28,15 @@ static inline uint64_t ntohll(uint64_t x) { return x; }
 
 /* Connection setup/teardown */
 
-int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *server, char *port) {
+int dccs_connect(struct rdma_cm_id **id, char *server, char *port) {
+    struct rdma_addrinfo *res;
     struct rdma_addrinfo hints;
     struct ibv_qp_init_attr attr;
     int rv;
 
     memset(&hints, 0, sizeof hints);
     hints.ai_port_space = RDMA_PS_TCP;
-    if ((rv = rdma_getaddrinfo(server, port, &hints, res)) != 0) {
+    if ((rv = rdma_getaddrinfo(server, port, &hints, &res)) != 0) {
         log_perror("rmda_getaddrinfo");
         goto end;
     }
@@ -45,7 +46,7 @@ int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *serve
     attr.qp_context = *id;
     attr.qp_type = IBV_QPT_RC;
 
-    if ((rv = rdma_create_ep(id, *res, NULL, &attr)) != 0) {
+    if ((rv = rdma_create_ep(id, res, NULL, &attr)) != 0) {
         log_perror("rdma_create_ep");
         goto out_free_addrinfo;
     }
@@ -55,17 +56,19 @@ int dccs_connect(struct rdma_cm_id **id, struct rdma_addrinfo **res, char *serve
         goto out_destroy_listen_ep;
     }
 
+    rdma_freeaddrinfo(res);
     return 0;
 
 out_destroy_listen_ep:
     rdma_destroy_ep(*id);
 out_free_addrinfo:
-    rdma_freeaddrinfo(*res);
+    rdma_freeaddrinfo(res);
 end:
     return rv;
 }
 
-int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, struct rdma_addrinfo **res, char *port) {
+int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, char *port) {
+    struct rdma_addrinfo *res;
     struct rdma_addrinfo hints;
     struct ibv_qp_init_attr attr;
     int rv;
@@ -73,7 +76,7 @@ int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, struct rd
     memset(&hints, 0, sizeof hints);
     hints.ai_flags = RAI_PASSIVE;
     hints.ai_port_space = RDMA_PS_TCP;
-    if ((rv = rdma_getaddrinfo(NULL, port, &hints, res)) != 0) {
+    if ((rv = rdma_getaddrinfo(NULL, port, &hints, &res)) != 0) {
         log_perror("rmda_getaddrinfo");
         goto end;
     }
@@ -82,7 +85,7 @@ int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, struct rd
     attr.cap.max_send_wr = attr.cap.max_recv_wr = MAX_WR;
     attr.qp_type = IBV_QPT_RC;
     
-    if ((rv = rdma_create_ep(listen_id, *res, NULL, &attr)) != 0) {
+    if ((rv = rdma_create_ep(listen_id, res, NULL, &attr)) != 0) {
         log_perror("rdma_create_ep");
         goto out_free_addrinfo;
     }
@@ -104,6 +107,7 @@ int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, struct rd
         goto out_destroy_accept_ep;
     }
 
+    rdma_freeaddrinfo(res);
     return 0;
 
 out_destroy_accept_ep:
@@ -111,22 +115,20 @@ out_destroy_accept_ep:
 out_destroy_listen_ep:
     rdma_destroy_ep(*listen_id);
 out_free_addrinfo:
-    rdma_freeaddrinfo(*res);
+    rdma_freeaddrinfo(res);
 end:
     return rv;
 }
 
-void dccs_client_disconnect(struct rdma_cm_id *id, struct rdma_addrinfo *res) {
+void dccs_client_disconnect(struct rdma_cm_id *id) {
     rdma_disconnect(id);
     rdma_destroy_ep(id);
-    rdma_freeaddrinfo(res);
 }
 
-void dccs_server_disconnect(struct rdma_cm_id *id, struct rdma_cm_id *listen_id, struct rdma_addrinfo *res) {
+void dccs_server_disconnect(struct rdma_cm_id *id, struct rdma_cm_id *listen_id) {
     rdma_disconnect(id);
     rdma_destroy_ep(id);
     rdma_destroy_ep(listen_id);
-    rdma_freeaddrinfo(res);
 }
 
 /* Memory Region registration */
@@ -790,7 +792,7 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
         uint64_t elapsed_cycles = request->end - request->start;
-        double start = (double)request->start * MILLION / (double)clock_rate;
+        //double start = (double)request->start * MILLION / (double)clock_rate;
         double end = (double)request->end * MILLION / (double)clock_rate;
         double latency = (double)elapsed_cycles * MILLION / (double)clock_rate;
         if (end - first_start <= DCCS_CYCLE_UPTIME)

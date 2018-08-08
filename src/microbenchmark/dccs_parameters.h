@@ -12,6 +12,7 @@
 
 typedef enum { None, Send, Read, Write } Verb;
 typedef enum { MODE_LATENCY, MODE_THROUGHPUT } Mode;
+typedef enum { DIR_OUT, DIR_IN, DIR_BOTH } Direction;
 typedef enum { ROLE_CLIENT, ROLE_SERVER } Role;
 
 struct dccs_mr_info{
@@ -23,12 +24,14 @@ struct dccs_parameters {
     Verb verb;
     size_t count;
     size_t length;
+    size_t repeat;
     char *server;
     char *port;
 
     Mode mode;
     size_t warmup_count;
     size_t mr_count;
+    int direction;
     bool verbose;
 };
 
