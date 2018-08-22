@@ -32,3 +32,5 @@ else
     load_hpcx_ompi
 fi
 
+echo "mpirun is $(which mpirun)"
+
