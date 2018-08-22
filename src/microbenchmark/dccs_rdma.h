@@ -312,6 +312,10 @@ int allocate_buffer(struct rdma_cm_id *id, struct dccs_request *requests, struct
         }
 
         struct dccs_request *request = requests + n;
+// perftest latency test: same buffer
+#if 0
+        offset = 0;
+#endif
         void *buf = (void*)((uint8_t *)buf_base + offset * length);
 
         request->verb = verb;
@@ -721,6 +725,15 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
     }
 
     uint64_t end = get_cycles();
+
+// perftest latency test: use previous end as start
+#if 0
+    for (size_t n = 0; n < count - 1; n++) {
+        requests[n].end = requests[n + 1].start;
+    }
+
+    requests[count - 1].end = end;
+#endif
 
 #if VERBOSE_TIMING
     for (size_t n = 0; n < count; n++) {
