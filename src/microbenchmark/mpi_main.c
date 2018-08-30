@@ -8,10 +8,11 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "dccs_utils.h"
-
+#define USE_MPIWTIME 1
 #define MPI_USE_ASYNC_VERB 1    // Whether to use asynchronous send/recv
 #define MPI_USE_WAIT 0          // Whether to use wait (or test)
+
+#include "dccs_utils.h"
 
 uint64_t clock_rate = 0;    // Clock ticks per second
 

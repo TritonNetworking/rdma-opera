@@ -6,6 +6,7 @@
 #define DCCS_UTIL_H
 
 #include <getopt.h>
+#include <mpi.h>
 #include <openssl/sha.h>
 #include <sched.h>
 #include <stdarg.h>
@@ -148,6 +149,8 @@ static inline uint64_t get_cycles()
     val = high;
     val = (val << 32) | low;
     return val;
+#elif USE_MPIWTIME
+    return (uint64_t)(MPI_Wtime() * BILLION);
 #else
     struct timespec time;
     clock_gettime(CLOCK_REALTIME, &time);
@@ -183,6 +186,8 @@ uint64_t get_clock_rate() {
     } else {
         return end - start;
     }
+#elif USE_MPIWTIME
+    return (uint64_t)BILLION;
 #else
     return (uint64_t)BILLION;
 #endif
