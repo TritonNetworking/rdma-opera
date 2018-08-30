@@ -79,8 +79,9 @@ FLAGS+="-x MXM_IB_MAP_MODE=round-robin -x MXM_IB_USE_GRH=y "
 
 # Mellanox recommended flags
 FLAGS+="--map-by node "
-FLAGS+="-mca pml yalla "
+#FLAGS+="-mca pml yalla "
 FLAGS+="-mca coll_hcoll_enable 0 "
+FLAGS+="-mca pml ob1 --mca btl openib,self,vader --mca btl_openib_cpc_include rdmacm --mca btl_openib_rroce_enable 1 -mca btl_openib_receive_queues P,65536,256,192,128:S,128,256,192,128:S,2048,1024,1008,64:S,12288,1024,1008,64:S,65536,1024,1008,64  "
 
 run_roter_test() {
     execname=~/Source/rotornet-mpi/rlb_v1/rotor_test
@@ -122,7 +123,7 @@ run_microbenchmark() {
 }
 
 run_osu_benchmark() {
-    execname=/home/yig004/opt/libexec/osu-micro-benchmarks/mpi/pt2pt/osu_bw
+    execname=/usr/mpi/gcc/openmpi-3.1.1rc1/tests/osu-micro-benchmarks-5.3.2/osu_bw
     mpirun -np $np --host $hosts $FLAGS $execname
 }
 
