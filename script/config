@@ -10,7 +10,8 @@ if $USE_HUGEPAGES; then
 fi
 
 # Repo directory setup
-REPO_DIR=~/Source/dccs
+CURR_DIR=$(realpath "$(dirname "$BASH_SOURCE")")
+REPO_DIR=$(realpath $CURR_DIR/..)
 BUILD_DIR="$REPO_DIR/build"
 SCRIPT_DIR="$REPO_DIR/script"
 HOSTS_PATH="$SCRIPT_DIR/hosts.config"
