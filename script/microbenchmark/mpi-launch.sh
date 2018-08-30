@@ -92,14 +92,14 @@ run_microbenchmark() {
     execname=$BENCH_EXEC_DIR/mpi_exec
 
     # Executable flags
-    l=1
+    l=$((1*32))
     #limit=1024
-    limit=$((1*1024*1024))
+    limit=$((1*32))
     #limit=$((1024*1024*1024))
 
     if [[ $MODE = latency ]]; then
         count=1
-        repeat=1000
+        repeat=1
     elif [[ $MODE = throughput ]]; then
         count=1000
         repeat=10

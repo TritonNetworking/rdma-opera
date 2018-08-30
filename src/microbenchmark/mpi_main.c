@@ -169,9 +169,21 @@ int run(int size, int rank, struct dccs_parameters params) {
     int send_target, recv_source;
 
     size_t bytes_sent, bytes_recvd;
-    size_t buffer_size = params.length * params.count;
 
+#define SYNC_PACKET_HEADER "timesync"
+    int slot = 0;
+
+    params.count = 1;
+    params.length = strlen(SYNC_PACKET_HEADER) + sizeof slot;
+
+    size_t buffer_size = params.length * params.count;
     buf = malloc_random(buffer_size);
+
+    strcpy(buf, SYNC_PACKET_HEADER);
+    memcpy((char *)buf + strlen(SYNC_PACKET_HEADER), &slot, sizeof slot);
+    char *s = bin_to_hex_string(buf, params.length);
+    printf("Packet: %s\n", s);
+    free(s);
 
     switch (params.direction) {
         case DIR_OUT:
