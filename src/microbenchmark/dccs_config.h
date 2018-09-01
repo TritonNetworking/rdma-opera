@@ -28,6 +28,7 @@
 #define DEFAULT_MR_COUNT 1
 #define DEFAULT_REPEAT_COUNT 1
 #define DEFAULT_DIRECTION DIR_OUT
+#define DEFAULT_TOS 0
 
 /* Protocol configuration */
 #define DCCS_CYCLE_UPTIME 180   // Cycle up time, in µsec

@@ -22,7 +22,7 @@ int run(struct dccs_parameters params) {
         log_info("Running in server mode ...\n");
 
     if (role == ROLE_CLIENT) {
-        if ((rv = dccs_connect(&id, params.server, params.port)) != 0)
+        if ((rv = dccs_connect(&id, params.server, params.port, params.tos)) != 0)
             goto end;
     } else {    // role == ROLE_SERVER
         if ((rv = dccs_listen(&listen_id, &id, params.port)) != 0)

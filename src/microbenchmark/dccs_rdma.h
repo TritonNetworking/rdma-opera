@@ -28,7 +28,18 @@ static inline uint64_t ntohll(uint64_t x) { return x; }
 
 /* Connection setup/teardown */
 
-int dccs_connect(struct rdma_cm_id **id, char *server, char *port) {
+int dccs_set_connection_tos(struct rdma_cm_id *id, uint8_t tos) {
+log_debug("Setting tos to %hhu\n", tos);
+    int rv = rdma_set_option(id, RDMA_OPTION_ID, RDMA_OPTION_ID_TOS,
+                                &tos, sizeof(uint8_t));
+    if (rv != 0) {
+        log_perror("rdma_set_option");
+    }
+
+    return rv;
+}
+
+int dccs_connect(struct rdma_cm_id **id, char *server, char *port, uint8_t tos) {
     struct rdma_addrinfo *res;
     struct rdma_addrinfo hints;
     struct ibv_qp_init_attr attr;
@@ -48,6 +59,10 @@ int dccs_connect(struct rdma_cm_id **id, char *server, char *port) {
 
     if ((rv = rdma_create_ep(id, res, NULL, &attr)) != 0) {
         log_perror("rdma_create_ep");
+        goto out_free_addrinfo;
+    }
+
+    if ((rv = dccs_set_connection_tos(*id, tos)) != 0) {
         goto out_free_addrinfo;
     }
 

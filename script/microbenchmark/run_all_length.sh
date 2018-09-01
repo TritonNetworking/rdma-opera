@@ -15,6 +15,7 @@ mode="latency"
 repeat=100
 warmup=0
 mr_count=1
+tos=32
 
 server="$1"
 execpath=$RDMA_BENCH_EXECPATH
@@ -22,7 +23,7 @@ execpath=$RDMA_BENCH_EXECPATH
 set -x
 while [[ $l -le $limit ]]; do
     echo "Length = $l ..."
-    $execpath -b $l -c $count -v $verb -m $mode -r $repeat -w $warmup --mr_count=$mr_count $server
+    $execpath -b $l -c $count -v $verb -m $mode -r $repeat -w $warmup --mr_count=$mr_count --tos=$tos $server
     (( l *= 2 ))
     echo ""
 done

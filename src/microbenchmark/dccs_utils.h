@@ -6,6 +6,7 @@
 #define DCCS_UTIL_H
 
 #include <getopt.h>
+#include <inttypes.h>
 #include <mpi.h>
 #include <openssl/sha.h>
 #include <sched.h>
@@ -233,7 +234,10 @@ void set_cpu_affinity() {
 }
 
 void print_usage(char *argv0) {
-    log_warning("Usage: %s [-b <block size>] [-c count] [--mr <mr count>] [-r <repeat>] [-v read|write] [-p <port>] [-m latency|throughput] [-w <warmup count>] [-V {verbose}] [server]\n", argv0);
+    log_warning("Usage: %s [-b <block size>] [-c count] [--mr <mr count>] "
+                "[-r <repeat>] [-v read|write] [-p <port>] "
+                "[-m latency|throughput] [-w <warmup count>] [-V {verbose}] "
+                "[--tos <tos>] [server]\n", argv0);
 }
 
 void print_parameters(struct dccs_parameters *params) {
@@ -279,6 +283,8 @@ void print_parameters(struct dccs_parameters *params) {
 
     log_info("Config: verb = %s, count = %zu, length = %zu, server = %s, port = %s.\n", verb, params->count, params->length, params->server, params->port);
     log_info("Config: mode = %s, repeat = %zu, warmup count = %zu, direction = %s, verbose = %d.\n", mode, params->repeat, params->warmup_count, direction, params->verbose);
+    if (params->tos != 0)
+        log_info("Config: tos = %zu.\n", params->tos);
 }
 
 /**
@@ -309,11 +315,13 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->warmup_count = DEFAULT_WARMUP_COUNT;
     params->mr_count = DEFAULT_MR_COUNT;
     params->direction = DEFAULT_DIRECTION;
+    params->tos = DEFAULT_TOS;
     params->verbose = false;
 
     while (true) {
 #define OPT_MR_COUNT 1001
 #define OPT_DIRECTION 1002
+#define OPT_TOS 1003
         static struct option long_options[] = {
             { "block_size", required_argument, 0, 'b' },
             { "mr_count", required_argument, 0, OPT_MR_COUNT },
@@ -324,6 +332,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
             { "repeat", required_argument, 0, 'r' },
             { "warmup", required_argument, 0, 'w' },
             { "direction", required_argument, 0, OPT_DIRECTION },
+            { "tos", required_argument, 0, OPT_TOS },
             { "verbose", no_argument, 0, 'V' },
             { "help", no_argument, 0, 'h' }
         };
@@ -394,6 +403,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 } else if (strcmp(optarg, "N-N") == 0) {
                     params->direction = DIR_BOTH;
                 } else {
+                    goto invalid;
+                }
+
+                break;
+            case OPT_TOS:
+                if (sscanf(optarg, "%" SCNu8, &(params->tos)) != 1) {
                     goto invalid;
                 }
 
