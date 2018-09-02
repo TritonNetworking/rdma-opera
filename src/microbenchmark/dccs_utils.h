@@ -249,6 +249,9 @@ void print_parameters(struct dccs_parameters *params) {
         case Write:
             verb = "Write";
             break;
+        case Send:
+            verb = "Send";
+            break;
         default:
             verb = "Unknown";
             break;
@@ -305,7 +308,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     int c;
 
     memset(params, 0,  sizeof(struct dccs_parameters));
-    params->verb = Read;
+    params->verb = Send;
     params->count = DEFAULT_MESSAGE_COUNT;
     params->length = DEFAULT_MESSAGE_LENGTH;
     params->server = NULL;

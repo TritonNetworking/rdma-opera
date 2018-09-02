@@ -38,18 +38,21 @@ int run(struct dccs_parameters params) {
         goto out_disconnect;
     }
 
-    if (role == ROLE_CLIENT) {
-        log_debug("Getting remote MR info ...\n");
-        if ((rv = get_remote_mr_info(id, requests, params.count)) < 0) {
-            log_debug("rv = %d.\n", rv);
-            log_error("Failed to get remote MR info.\n");
-            goto out_deallocate_buffer;
-        }
-    } else {    // role == ROLE_SERVER
-        log_debug("Sending local MR info ...\n");
-        if ((rv = send_local_mr_info(id, requests, params.count, params.length)) < 0) {
-            log_error("Failed to get remote MR info.\n");
-            goto out_deallocate_buffer;
+    if (params.verb == Read || params.verb == Write) {
+        if (role == ROLE_CLIENT) {
+            log_debug("Getting remote MR info ...\n");
+            if ((rv = get_remote_mr_info(id, requests, params.count)) < 0) {
+                log_debug("rv = %d.\n", rv);
+                log_error("Failed to get remote MR info.\n");
+                goto out_deallocate_buffer;
+            }
+        } else {    // role == ROLE_SERVER
+            log_debug("Sending local MR info ...\n");
+            rv = send_local_mr_info(id, requests, params.count, params.length);
+            if (rv < 0) {
+                log_error("Failed to get remote MR info.\n");
+                goto out_deallocate_buffer;
+            }
         }
     }
 
@@ -79,7 +82,23 @@ int run(struct dccs_parameters params) {
                 goto out_end_request;
             }
         } else {    // role == ROLE_SERVER
-            // Server is passive in RDMA experiments, i.e. responder.
+            switch (params.verb) {
+                case Read:
+                case Write:
+                    // Server is passive in RDMA experiments, i.e. responder.
+                    break;
+                case Send:
+                    if ((rv = recv_requests(id, requests, &params)) < 0) {
+                        log_error("Failed to receive all requests.\n");
+                        goto out_end_request;
+                    }
+
+                    break;
+                default:
+                    log_warning("Unrecognized verb on server side: %d.\n",
+                                params.verb);
+                    break;
+            }
         }
 
 out_end_request:

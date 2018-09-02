@@ -659,6 +659,28 @@ int wait_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
     return -failed_count;
 }
 
+int recv_requests(struct rdma_cm_id *id, struct dccs_request *requests, struct dccs_parameters *params) {
+    int rv;
+    int failed_count = 0;
+    struct ibv_wc wc;
+
+    for (size_t n = 0; n < params->count; n++) {
+        struct dccs_request *request = requests + n;
+        rv = dccs_rdma_recv(id, request->buf, request->length, request->mr);
+        if (rv != 0) {
+            log_error("Failed to recv messages.\n");
+            ++failed_count;
+        }
+        while ((rv = dccs_rdma_recv_comp(id, &wc)) == 0);
+        if (rv < 0) {
+            log_error("Failed to recv messages.\n");
+            ++failed_count;
+        }
+    }
+
+    return -failed_count;
+}
+
 /**
  * Send and wait for multiple RDMA requests.
  */
