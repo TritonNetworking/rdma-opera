@@ -102,25 +102,7 @@ int run(struct dccs_parameters params) {
         }
 
 out_end_request:
-        // Synchronize end of a round
-        if (role == ROLE_CLIENT) {
-            log_debug("Sending terminating message ...\n");
-            char buf[SYNC_END_MESSAGE_LENGTH] = SYNC_END_MESSAGE;
-            if ((rv = send_message(id, buf, SYNC_END_MESSAGE_LENGTH)) < 0) {
-                log_error("Failed to send terminating message.\n");
-                goto out_deallocate_buffer;
-            }
-        } else {    // role == ROLE_SERVER
-            log_debug("Waiting for end message ...\n");
-            char buf[SYNC_END_MESSAGE_LENGTH] = {0};
-            if ((rv = recv_message(id, buf, SYNC_END_MESSAGE_LENGTH)) < 0) {
-                log_error("Failed to recv terminating message.\n");
-                goto out_deallocate_buffer;
-            }
-        }
 
-        // Print stats
-        print_sha1sum(requests, params.count);
         if (role == ROLE_CLIENT) {
             switch (params.mode) {
                 case MODE_LATENCY:
@@ -132,6 +114,26 @@ out_end_request:
             }
         }
     }
+
+    // Synchronize end of a round
+    if (role == ROLE_CLIENT) {
+        log_debug("Sending terminating message ...\n");
+        char buf[SYNC_END_MESSAGE_LENGTH] = SYNC_END_MESSAGE;
+        if ((rv = send_message(id, buf, SYNC_END_MESSAGE_LENGTH)) < 0) {
+            log_error("Failed to send terminating message.\n");
+            goto out_deallocate_buffer;
+        }
+    } else {    // role == ROLE_SERVER
+        log_debug("Waiting for end message ...\n");
+        char buf[SYNC_END_MESSAGE_LENGTH] = {0};
+        if ((rv = recv_message(id, buf, SYNC_END_MESSAGE_LENGTH)) < 0) {
+            log_error("Failed to recv terminating message.\n");
+            goto out_deallocate_buffer;
+        }
+    }
+
+    // Print stats
+    print_sha1sum(requests, params.count);
 
 out_deallocate_buffer:
     log_debug("de-allocating buffer\n");
