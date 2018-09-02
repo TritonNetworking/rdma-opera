@@ -8,6 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 
+#define TEST_SYNC_PACKET 1
 #define USE_MPIWTIME 1
 #define MPI_USE_ASYNC_VERB 1    // Whether to use asynchronous send/recv
 #define MPI_USE_WAIT 0          // Whether to use wait (or test)
@@ -170,20 +171,24 @@ int run(int size, int rank, struct dccs_parameters params) {
 
     size_t bytes_sent, bytes_recvd;
 
-#define SYNC_PACKET_HEADER "timesync"
-    int slot = 0;
+#if TEST_SYNC_PACKET
+#define SYNC_PACKET_HEADER "sync"
+    uint8_t slot = 0;
 
     params.count = 1;
     params.length = strlen(SYNC_PACKET_HEADER) + sizeof slot;
+#endif
 
     size_t buffer_size = params.length * params.count;
     buf = malloc_random(buffer_size);
 
+#if TEST_SYNC_PACKET
     strcpy(buf, SYNC_PACKET_HEADER);
     memcpy((char *)buf + strlen(SYNC_PACKET_HEADER), &slot, sizeof slot);
     char *s = bin_to_hex_string(buf, params.length);
     printf("Packet: %s\n", s);
     free(s);
+#endif
 
     switch (params.direction) {
         case DIR_OUT:
