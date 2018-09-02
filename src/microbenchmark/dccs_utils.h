@@ -470,8 +470,13 @@ void *malloc_random(size_t size) {
         return buf;
 
     srand((unsigned int)time(NULL));
-    for (size_t n = 0; n < size; n++) {
-        *((char *)buf + n) = (char)rand();
+    int r = rand();
+    for (size_t n = 0; n < size / sizeof(int); n++) {
+        *((int *)buf + n) = r;
+    }
+
+    for (size_t n = size / sizeof(int) * sizeof(int); n < size; n++) {
+        *((char *)buf + n) = (char)r;
     }
 
     return buf;
