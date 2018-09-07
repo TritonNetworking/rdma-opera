@@ -10,11 +10,17 @@
 #include <float.h>
 #include <math.h>
 #include <stdbool.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
 #include "dccs_parameters.h"
 #include "dccs_utils.h"
+
+#define SUCCESS 0
+#define FAILURE -1
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static inline uint64_t htonll(uint64_t x) { return bswap_64(x); }
@@ -39,111 +45,180 @@ log_debug("Setting tos to %hhu\n", tos);
     return rv;
 }
 
-int dccs_connect(struct rdma_cm_id **id, char *server, char *port, uint8_t tos) {
-    struct rdma_addrinfo *res;
-    struct rdma_addrinfo hints;
-    struct ibv_qp_init_attr attr;
+int check_add_port(const char *servername,
+        const char* port,
+        struct addrinfo *hints,
+        struct addrinfo **res)
+{
     int rv;
+    if ((rv = getaddrinfo(servername, port, hints, res)) != 0) {
+        fprintf(stderr, "%s for %s:%s\n", gai_strerror(rv), servername, port);
+        return -1;
+    }
+
+    return 0;
+}
+
+int dccs_connect(struct dccs_connection *conn, char *server, char *port, uint8_t tos) {
+
+    conn->cm_channel = rdma_create_event_channel();
+    if (conn->cm_channel == NULL) {
+        fprintf(stderr, " rdma_create_event_channel failed\n");
+        return FAILURE;
+    }
+
+    if (rdma_create_id(conn->cm_channel, &conn->cm_id, NULL, DEFAULT_PORT_SPACE) != 0) {
+        fprintf(stderr,"rdma_create_id failed\n");
+        return FAILURE;
+    }
+
+    struct sockaddr_in sin;
+    struct addrinfo *res;
+    struct rdma_cm_event *event;
+    struct addrinfo hints;
 
     memset(&hints, 0, sizeof hints);
-    hints.ai_port_space = RDMA_PS_TCP;
-    if ((rv = rdma_getaddrinfo(server, port, &hints, &res)) != 0) {
-        log_perror("rmda_getaddrinfo");
-        goto end;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (check_add_port(server, port, &hints, &res) != 0) {
+        fprintf(stderr, "Problem in resolving basic adress and port\n");
+        return FAILURE;
     }
 
-    memset(&attr, 0, sizeof attr);
-    attr.cap.max_send_wr = attr.cap.max_recv_wr = MAX_WR;
-    attr.qp_context = *id;
-    attr.qp_type = IBV_QPT_RC;
+    sin.sin_addr.s_addr = ((struct sockaddr_in*)res->ai_addr)->sin_addr.s_addr;
+    sin.sin_family = PF_INET;
+    sin.sin_port = htons((unsigned short)atoi(port));
 
-    if ((rv = rdma_create_ep(id, res, NULL, &attr)) != 0) {
-        log_perror("rdma_create_ep");
-        goto out_free_addrinfo;
+    if (rdma_resolve_addr(conn->cm_id, NULL,(struct sockaddr *)&sin,2000)) {
+        fprintf(stderr, "rdma_resolve_addr failed\n");
+        return -1;
     }
 
-    if ((rv = dccs_set_connection_tos(*id, tos)) != 0) {
-        goto out_free_addrinfo;
+    if (rdma_get_cm_event(conn->cm_channel,&event)) {
+        fprintf(stderr, "rdma_get_cm_events failed\n");
+        return -1;
     }
 
-    if ((rv = rdma_connect(*id, NULL)) != 0) {
-        log_perror("rdma_connect");
-        goto out_destroy_listen_ep;
+    if (event->event != RDMA_CM_EVENT_ADDR_RESOLVED) {
+        fprintf(stderr, "unexpected CM event %d\n",event->event);
+        rdma_ack_cm_event(event);
+        return -1;
     }
 
-    rdma_freeaddrinfo(res);
+    rdma_ack_cm_event(event);
+
+    if (rdma_set_option(conn->cm_id, RDMA_OPTION_ID, RDMA_OPTION_ID_TOS, &tos, sizeof tos)) {
+        fprintf(stderr, " Set TOS option failed: %d\n",event->event);
+        return -1;
+    }
+
+    if (rdma_resolve_route(conn->cm_id,2000)) {
+        fprintf(stderr, "rdma_resolve_route failed\n");
+        return -1;
+    }
+
+    if (event->event != RDMA_CM_EVENT_ROUTE_RESOLVED) {
+        fprintf(stderr, "unexpected CM event %d\n",event->event);
+        rdma_ack_cm_event(event);
+        return -1;
+    }
+
+    rdma_ack_cm_event(event);
+
+    if (rdma_connect(conn->cm_id, NULL)) {
+        fprintf(stderr, "Function rdma_connect failed\n");
+        return -1;
+    }
+
+    if (rdma_get_cm_event(conn->cm_channel,&event)) {
+        fprintf(stderr, "rdma_get_cm_events failed\n");
+        return -1;
+    }
+
+    if (event->event != RDMA_CM_EVENT_ESTABLISHED) {
+        rdma_ack_cm_event(event);
+        fprintf(stderr, "Unexpected CM event bl blka %d\n", event->event);
+        return -1;
+    }
+
+    rdma_ack_cm_event(event);
     return 0;
-
-out_destroy_listen_ep:
-    rdma_destroy_ep(*id);
-out_free_addrinfo:
-    rdma_freeaddrinfo(res);
-end:
-    return rv;
 }
 
-int dccs_listen(struct rdma_cm_id **listen_id, struct rdma_cm_id **id, char *port) {
-    struct rdma_addrinfo *res;
-    struct rdma_addrinfo hints;
-    struct ibv_qp_init_attr attr;
-    int rv;
+int dccs_listen(struct dccs_connection *conn, char *port) {
+    conn->cm_channel = rdma_create_event_channel();
+    if (conn->cm_channel == NULL) {
+        fprintf(stderr, " rdma_create_event_channel failed\n");
+        return FAILURE;
+    }
+
+    if (rdma_create_id(conn->cm_channel, &conn->cm_id_control, NULL, DEFAULT_PORT_SPACE) != 0) {
+        fprintf(stderr,"rdma_create_id failed\n");
+        return FAILURE;
+    }
+
+
+    struct sockaddr_in sin;
+    struct addrinfo *res;
+    struct rdma_cm_event *event;
+    struct addrinfo hints;
 
     memset(&hints, 0, sizeof hints);
-    hints.ai_flags = RAI_PASSIVE;
-    hints.ai_port_space = RDMA_PS_TCP;
-    if ((rv = rdma_getaddrinfo(NULL, port, &hints, &res)) != 0) {
-        log_perror("rmda_getaddrinfo");
-        goto end;
+    hints.ai_family = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+
+    if (check_add_port(NULL, port, &hints, &res) != 0) {
+        fprintf(stderr, "Problem in resolving basic adress and port\n");
+        return FAILURE;
     }
 
-    memset(&attr, 0, sizeof attr);
-    attr.cap.max_send_wr = attr.cap.max_recv_wr = MAX_WR;
-    attr.qp_type = IBV_QPT_RC;
-    
-    if ((rv = rdma_create_ep(listen_id, res, NULL, &attr)) != 0) {
-        log_perror("rdma_create_ep");
-        goto out_free_addrinfo;
+    sin.sin_addr.s_addr = 0;
+    sin.sin_family = PF_INET;
+    sin.sin_port = htons((unsigned short)atoi(port));
+
+    if (rdma_bind_addr(conn->cm_id_control, (struct sockaddr *)&sin)) {
+        fprintf(stderr," rdma_bind_addr failed\n");
+        return -1;
     }
 
-    if ((rv = rdma_listen(*listen_id, 0)) != 0) {
-        log_perror("rdma_listen");
-        goto out_destroy_listen_ep;
+    if (rdma_listen(conn->cm_id_control, 0)) {
+        fprintf(stderr, "rdma_listen failed\n");
+        return -1;
     }
 
-    if ((rv = rdma_get_request(*listen_id, id)) != 0) {
-        log_perror("rdma_get_request");
-        goto out_destroy_listen_ep;
+    if (rdma_get_cm_event(conn->cm_channel, &event)) {
+        fprintf(stderr, "rdma_get_cm_events failed\n");
+        return -1;
     }
 
-    // need ibv_query_qp?
-
-    if ((rv = rdma_accept(*id, NULL)) != 0) {
-        log_perror("rdma_accept");
-        goto out_destroy_accept_ep;
+    if (event->event != RDMA_CM_EVENT_CONNECT_REQUEST) {
+        fprintf(stderr, "bad event waiting for connect request %d\n", event->event);
+        return -1;
     }
 
-    rdma_freeaddrinfo(res);
+    conn->cm_id = (struct rdma_cm_id*)event->id;
+
+    if (rdma_accept(conn->cm_id, NULL)) {
+        fprintf(stderr, "Function rdma_accept failed\n");
+        return 1;
+    }
+
+    rdma_ack_cm_event(event);
+    rdma_destroy_id(conn->cm_id_control);
+    freeaddrinfo(res);
+
     return 0;
-
-out_destroy_accept_ep:
-    rdma_destroy_ep(*id);
-out_destroy_listen_ep:
-    rdma_destroy_ep(*listen_id);
-out_free_addrinfo:
-    rdma_freeaddrinfo(res);
-end:
-    return rv;
 }
 
-void dccs_client_disconnect(struct rdma_cm_id *id) {
-    rdma_disconnect(id);
-    rdma_destroy_ep(id);
+void dccs_client_disconnect(struct dccs_connection *conn) {
+    rdma_destroy_id(conn->cm_id);
+    rdma_destroy_event_channel(conn->cm_channel);
 }
 
-void dccs_server_disconnect(struct rdma_cm_id *id, struct rdma_cm_id *listen_id) {
-    rdma_disconnect(id);
-    rdma_destroy_ep(id);
-    rdma_destroy_ep(listen_id);
+void dccs_server_disconnect(struct dccs_connection *conn) {
+    rdma_destroy_id(conn->cm_id_control);
+    rdma_destroy_event_channel(conn->cm_channel);
 }
 
 /* Memory Region registration */

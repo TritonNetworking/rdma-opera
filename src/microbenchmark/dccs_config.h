@@ -21,6 +21,7 @@
 #define MAX_WR 1000
 
 /* Protocol default values */
+#define DEFAULT_PORT_SPACE RDMA_PS_TCP
 #define DEFAULT_MESSAGE_COUNT 1000
 #define DEFAULT_MESSAGE_LENGTH 2
 #define DEFAULT_PORT "1234"

@@ -20,6 +20,13 @@ struct dccs_mr_info{
     uint32_t rkey;
 };
 
+struct dccs_connection
+{
+    struct rdma_cm_id *cm_id;
+    struct rdma_event_channel *cm_channel;
+    struct rdma_cm_id *cm_id_control;
+};
+
 struct dccs_parameters {
     Verb verb;
     size_t count;
