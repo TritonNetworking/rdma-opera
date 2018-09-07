@@ -33,6 +33,7 @@ struct dccs_parameters {
     size_t mr_count;
     int direction;
     uint8_t tos;
+    uint8_t slot;
     bool verbose;
 };
 

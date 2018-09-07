@@ -2,6 +2,8 @@
 
 #define _GNU_SOURCE
 
+#define TEST_RDMA_SYNC 0
+
 #include <stdio.h>
 
 #include "dccs_parameters.h"
@@ -37,6 +39,13 @@ int run(struct dccs_parameters params) {
         log_error("Failed to allocate buffers.\n");
         goto out_disconnect;
     }
+
+#if TEST_RDMA_SYNC
+    uint8_t slot = 0;
+    strcpy(requests[0].buf, "dummy dummy dummy");
+    strcpy((char *)requests[0].buf + 18, "sync");
+    memcpy((char *)requests[0].buf + 22, &slot, sizeof slot);
+#endif
 
     if (params.verb == Read || params.verb == Write) {
         if (role == ROLE_CLIENT) {
