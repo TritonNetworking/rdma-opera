@@ -12,6 +12,7 @@ source ./config
 # Default command line argument
 YALLA=false
 UCX=false
+SLOT=0
 PROGRAM="benchmark"
 
 # Parse command line argument
@@ -30,6 +31,11 @@ case $key in
         ;;
     -m|--mode)
         MODE="$2"
+        shift # past argument
+        shift # past value
+        ;;
+    -s|--slot)
+        SLOT="$2"
         shift # past argument
         shift # past value
         ;;
@@ -82,6 +88,7 @@ FLAGS+="--map-by node "
 #FLAGS+="-mca pml yalla "
 FLAGS+="-mca coll_hcoll_enable 0 "
 FLAGS+="-mca pml ob1 --mca btl openib,self,vader --mca btl_openib_cpc_include rdmacm --mca btl_openib_rroce_enable 1 -mca btl_openib_receive_queues P,65536,256,192,128:S,128,256,192,128:S,2048,1024,1008,64:S,12288,1024,1008,64:S,65536,1024,1008,64  "
+FLAGS+="--mca btl_openib_ib_service_level 0 "
 
 run_roter_test() {
     execname=~/Source/rotornet-mpi/rlb_v1/rotor_test
@@ -92,9 +99,11 @@ run_microbenchmark() {
     execname=$BENCH_EXEC_DIR/mpi_exec
 
     # Executable flags
-    l=$((1*32))
-    #limit=1024
-    limit=$((1*32))
+    l=32
+    #l=$((1*1024*1024))
+    #l=$((1*512*1024*1024))
+    limit=32
+    #limit=$((1*512*1024*1024))
     #limit=$((1024*1024*1024))
 
     if [[ $MODE = latency ]]; then
@@ -115,7 +124,7 @@ run_microbenchmark() {
     set -x
     while [[ $l -le $limit ]]; do
         echo "Length = $l ..."
-        execflags="-b $l -c $count -r $repeat -m $MODE -w $warmup --mr_count=$mr_count --direction=$direction"
+        execflags="-b $l -c $count -r $repeat -m $MODE -w $warmup --mr_count=$mr_count --direction=$direction --slot=$SLOT"
         mpirun -np $np --host $hosts $FLAGS $execname $execflags
         (( l *= 2 ))
         echo ""

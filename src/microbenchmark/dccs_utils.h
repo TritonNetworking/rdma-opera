@@ -312,7 +312,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->count = DEFAULT_MESSAGE_COUNT;
     params->length = DEFAULT_MESSAGE_LENGTH;
     params->server = NULL;
-    params->port = DEFAULT_PORT;
+    params->port = (char *)DEFAULT_PORT;
     params->mode = MODE_LATENCY;
     params->repeat = DEFAULT_REPEAT_COUNT;
     params->warmup_count = DEFAULT_WARMUP_COUNT;

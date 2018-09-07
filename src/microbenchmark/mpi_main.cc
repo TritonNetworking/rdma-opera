@@ -1,14 +1,18 @@
 // MPI tool
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <mpi.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+#include <chrono>
+#include <cstdio>
+#include <cstdlib>
+#include <ctime>
 #include <unistd.h>
 
-#define TEST_SYNC_PACKET 1
+#define TEST_SYNC_PACKET 0
+#define SYNC_PACKET_HEADER "sync"
 #define USE_MPIWTIME 1
 #define MPI_USE_ASYNC_VERB 1    // Whether to use asynchronous send/recv
 #define MPI_USE_WAIT 0          // Whether to use wait (or test)
@@ -37,17 +41,17 @@ int verify_checksum(const void *buf, size_t buffer_size, int rank, int size) {
     if (rank == 0) {
         //log_info("Verifying checksum ...\n");
         MPI_Status status;
-        for (int src = 1; src < size; src++) {
+        for (int src = 1; src == 1; src++) {
             unsigned char remote_digest[SHA_DIGEST_LENGTH];
             MPI_Recv(remote_digest, SHA_DIGEST_LENGTH, MPI_CHAR, src, 0, MPI_COMM_WORLD, &status);
-            if (strncmp((const void *)digest, (const void *)remote_digest, SHA_DIGEST_LENGTH) != 0) {
+            if (strncmp((const char *)digest, (const char *)remote_digest, SHA_DIGEST_LENGTH) != 0) {
                 log_error("Incorrect SHA sum from rank %d.\n", src);
                 return -1;
             }
         }
 
         //log_info("Checksum verified.\n");
-    } else {
+    } else if (rank == 1) {
         MPI_Send(digest, SHA_DIGEST_LENGTH, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
     }
 
@@ -172,29 +176,33 @@ int run(int size, int rank, struct dccs_parameters params) {
     size_t bytes_sent, bytes_recvd;
 
 #if TEST_SYNC_PACKET
-#define SYNC_PACKET_HEADER "sync"
-    uint8_t slot = 0;
+    if (rank == 0)
+        log_debug("slot is %hhu.\n", params.slot);
 
+    uint8_t slot = params.slot;
     params.count = 1;
     params.length = strlen(SYNC_PACKET_HEADER) + sizeof slot;
+
 #endif
 
     size_t buffer_size = params.length * params.count;
     buf = malloc_random(buffer_size);
 
 #if TEST_SYNC_PACKET
-    strcpy(buf, SYNC_PACKET_HEADER);
-    memcpy((char *)buf + strlen(SYNC_PACKET_HEADER), &slot, sizeof slot);
-    char *s = bin_to_hex_string(buf, params.length);
-    printf("Packet: %s\n", s);
-    free(s);
+    if (rank == 0) {
+        strcpy((char *)buf, SYNC_PACKET_HEADER);
+        memcpy((char *)buf + strlen(SYNC_PACKET_HEADER), &slot, sizeof slot);
+        char *s = bin_to_hex_string(buf, params.length);
+        printf("Packet: %s\n", s);
+        free(s);
+    }
 #endif
 
     switch (params.direction) {
         case DIR_OUT:
             should_send = (rank == 0);
-            should_recv = !should_send;
-            send_target = HOST_NOSELF;
+            should_recv = (rank == 1);
+            send_target = 1;
             recv_source = 0;
             break;
         case DIR_IN:
@@ -218,8 +226,10 @@ int run(int size, int rank, struct dccs_parameters params) {
     //MPI_Barrier(MPI_COMM_WORLD);
     //start = get_cycles();
 
+    fprintf(stderr, "[%d] send = %d, recv = %d.\n", rank, should_send, should_recv);
+
     for (size_t r = 0; r < params.repeat; r++) {
-        MPI_Barrier(MPI_COMM_WORLD);
+        //MPI_Barrier(MPI_COMM_WORLD);
 
         //buf = malloc_random(buffer_size);
         bytes_sent = bytes_recvd = 0;
@@ -247,6 +257,8 @@ int run(int size, int rank, struct dccs_parameters params) {
         //free(buf);
     }
 
+    fprintf(stderr, "[%d] out of loop.\n", rank);
+
     verify_checksum(buf, buffer_size, rank, size);
     free(buf);
 
@@ -260,6 +272,103 @@ int run(int size, int rank, struct dccs_parameters params) {
 
     return rv;
 }
+
+#if TEST_SYNC_PACKET
+
+#define TAG_SYNC_BARRIER 1000
+
+int Sync_Barrier(int size, int rank, uint8_t *slot) {
+    const char *header = SYNC_PACKET_HEADER;
+    const int header_len = strlen(header);
+    size_t len = header_len + sizeof *slot;
+    char buf[len];
+    int rv;
+
+    int tag = TAG_SYNC_BARRIER;
+    if (rank == 0) {
+        memcpy(buf, header, header_len);
+        memcpy(buf + header_len, slot, sizeof *slot);
+        MPI_Request *requests = (MPI_Request *)malloc((size - 1) * sizeof(MPI_Request));
+        for (int dst = 1; dst < size; dst++) {
+            rv = MPI_Isend(buf, len, MPI_CHAR, dst, tag, MPI_COMM_WORLD, requests + dst - 1);
+            if (rv != 0) {
+                log_perror("MPI_Isend");
+            }
+        }
+
+        rv = MPI_Waitall(size - 1, requests, MPI_STATUSES_IGNORE);
+        free(requests);
+
+        if (rv != 0) {
+            log_perror("MPI_Waitall");
+            return -1;
+        }
+
+        return 0;
+    } else {
+        const int src = 0;
+        rv = MPI_Recv(buf, len, MPI_CHAR, src, tag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+        if (rv != 0) {
+            log_error("Failed to receive sync barrier.\n");
+            return -1;
+        }
+
+        if (strncmp(header, buf, header_len) != 0) {
+            log_error("Incorrect sync header.\n");
+            return -1;
+        } else {
+            memcpy(slot, buf + header_len, sizeof *slot);
+            return 0;
+        }
+    }
+}
+
+#define INTERVAL 100000
+#define SLOTS 255
+
+int run1(int size, int rank, struct dccs_parameters params) {
+    int rv;
+    uint8_t slot;
+
+    printf("[%d] Before barrier.\n", rank);
+    MPI_Barrier(MPI_COMM_WORLD);
+    printf("[%d] After barrier.\n", rank);
+
+    if (rank == 0) {
+        // Sync node
+        slot = 0;
+
+        long long next = 0;
+        auto start = std::chrono::high_resolution_clock::now();
+        while (slot < SLOTS) {
+            auto elapsed = std::chrono::high_resolution_clock::now() - start;
+            long long ns = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
+            if (ns >= next) {
+                slot++;
+                next += INTERVAL;
+                //printf("[%d] slot = %d, elapsed = %lluus.\n", rank, slot, ns/1000);
+                Sync_Barrier(size, rank, &slot);
+            }
+        }
+
+        return rv;
+    } else {
+        // Non-sync node
+        auto last = std::chrono::high_resolution_clock::now(), curr = last;
+        while (slot < SLOTS) {
+            Sync_Barrier(size, rank, &slot);
+            last = curr;
+            curr = std::chrono::high_resolution_clock::now();
+            auto elapsed = curr - last;
+            long long us = std::chrono::duration_cast<std::chrono::microseconds>(elapsed).count();
+            printf("[%d] slot = %d, elapsed = %lluus.\n", rank, slot, us);
+        }
+
+        return rv;
+    }
+}
+
+#endif
 
 int main(int argc, char *argv[]) {
     int size, rank, rv;
@@ -275,8 +384,13 @@ int main(int argc, char *argv[]) {
 
     //wait_for_gdb(rank);
 
+#if TEST_SYNC_PACKET
     rv = run(size, rank, params);
+#else
+    rv = run(size, rank, params);
+#endif
 
+    fprintf(stderr, "[%d] before finalize.\n", rank);
     MPI_Finalize();
 
     return rv;

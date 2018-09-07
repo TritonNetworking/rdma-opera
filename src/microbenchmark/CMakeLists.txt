@@ -11,6 +11,6 @@ set(HEADER_FILES
 add_executable(rdma_exec ${HEADER_FILES} rdma_main.c)
 target_link_libraries(rdma_exec m ssl crypto ibverbs rdmacm)
 
-add_executable(mpi_exec ${HEADER_FILES} mpi_main.c)
-target_link_libraries(mpi_exec m ssl crypto ibverbs rdmacm ${MPI_C_LIBRARIES})
+add_executable(mpi_exec ${HEADER_FILES} mpi_main.cc)
+target_link_libraries(mpi_exec m ssl crypto ibverbs rdmacm ${MPI_CXX_LIBRARIES})
 
