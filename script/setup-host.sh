@@ -19,6 +19,7 @@ echo "Done"
 echo
 
 # Disable Hyper-Threading
+: '
 echo "Disabling Hyper-Threading ..."
 from=$((CPU_CORE_COUNT))
 to=$((2 * CPU_CORE_COUNT - 1))
@@ -32,6 +33,7 @@ if ! lscpu | grep -q "On-line CPU(s) list:  0-$max"; then
 fi
 echo "Done"
 echo
+#'
 
 # Restart NIC driver to update interrupt handler mapping
 echo "Restarting NIC driver to update IRQ mapping ..."
