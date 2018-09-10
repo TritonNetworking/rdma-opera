@@ -8,7 +8,7 @@
 #include <time.h>
 #include <unistd.h>
 
-#define TEST_SYNC_PACKET 1
+#define TEST_SYNC_PACKET 0
 #define USE_MPIWTIME 1
 #define MPI_USE_ASYNC_VERB 1    // Whether to use asynchronous send/recv
 #define MPI_USE_WAIT 0          // Whether to use wait (or test)

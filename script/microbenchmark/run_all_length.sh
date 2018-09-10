@@ -6,16 +6,19 @@ fi
 
 source ./config
 
-l=$((1*1024*1024*1024))
-limit=$((1*1024*1024*1024))
+#l=$((1*512*1024*1024))
+#limit=$((1*512*1024*1024))
+
+l=2
+limit=2
 
 count=1
-verb="read"
+verb="write"
 mode="latency"
-repeat=100
+repeat=10
 warmup=0
 mr_count=1
-tos=32
+tos=128
 
 server="$1"
 execpath=$RDMA_BENCH_EXECPATH
