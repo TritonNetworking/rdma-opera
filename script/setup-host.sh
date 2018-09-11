@@ -8,6 +8,7 @@ NIC_IF=enp101s0
 TARGET_MTU=9000
 
 # Set CPU frequency to max
+: '
 echo "Setting CPU governor to performance ..."
 if ! dpkg -s cpufrequtils 2>&1 | grep -q 'installed$'; then
     echo "Package cpufrequtils not installed. Installing ..."
@@ -17,6 +18,7 @@ echo 'GOVERNOR="performance"' | sudo tee /etc/default/cpufrequtils > /dev/null
 sudo systemctl disable ondemand
 echo "Done"
 echo
+#'
 
 # Disable Hyper-Threading
 : '
