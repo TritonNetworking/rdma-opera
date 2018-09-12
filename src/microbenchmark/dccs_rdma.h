@@ -60,6 +60,7 @@ int check_add_port(const char *servername,
 }
 
 int dccs_connect(struct dccs_connection *conn, char *server, char *port, uint8_t tos) {
+    fprintf(stderr, "dccs_connect(): server = %s, port = %s.\n", server, port);
 
     conn->cm_channel = rdma_create_event_channel();
     if (conn->cm_channel == NULL) {
@@ -76,6 +77,7 @@ int dccs_connect(struct dccs_connection *conn, char *server, char *port, uint8_t
     struct addrinfo *res;
     struct rdma_cm_event *event;
     struct addrinfo hints;
+    struct rdma_conn_param conn_param;
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -86,10 +88,12 @@ int dccs_connect(struct dccs_connection *conn, char *server, char *port, uint8_t
         return FAILURE;
     }
 
+    memset(&sin, 0, sizeof sin);
     sin.sin_addr.s_addr = ((struct sockaddr_in*)res->ai_addr)->sin_addr.s_addr;
     sin.sin_family = PF_INET;
     sin.sin_port = htons((unsigned short)atoi(port));
 
+    fprintf(stderr, "Resolving address...\n");
     if (rdma_resolve_addr(conn->cm_id, NULL,(struct sockaddr *)&sin,2000)) {
         fprintf(stderr, "rdma_resolve_addr failed\n");
         return -1;
@@ -113,8 +117,14 @@ int dccs_connect(struct dccs_connection *conn, char *server, char *port, uint8_t
         return -1;
     }
 
+    fprintf(stderr, "Resolving route...\n");
     if (rdma_resolve_route(conn->cm_id,2000)) {
         fprintf(stderr, "rdma_resolve_route failed\n");
+        return -1;
+    }
+
+    if (rdma_get_cm_event(conn->cm_channel,&event)) {
+        fprintf(stderr, "rdma_get_cm_events failed\n");
         return -1;
     }
 
@@ -126,8 +136,15 @@ int dccs_connect(struct dccs_connection *conn, char *server, char *port, uint8_t
 
     rdma_ack_cm_event(event);
 
-    if (rdma_connect(conn->cm_id, NULL)) {
+    fprintf(stderr, "Connecting ...\n");
+
+    memset(&conn_param, 0, sizeof conn_param);
+    conn_param.retry_count = 7;
+    conn_param.rnr_retry_count = 7;
+
+    if (rdma_connect(conn->cm_id, &conn_param)) {
         fprintf(stderr, "Function rdma_connect failed\n");
+        perror("rdma_connect");
         return -1;
     }
 
@@ -139,6 +156,7 @@ int dccs_connect(struct dccs_connection *conn, char *server, char *port, uint8_t
     if (event->event != RDMA_CM_EVENT_ESTABLISHED) {
         rdma_ack_cm_event(event);
         fprintf(stderr, "Unexpected CM event bl blka %d\n", event->event);
+        perror("rdma_connect");
         return -1;
     }
 
@@ -147,6 +165,8 @@ int dccs_connect(struct dccs_connection *conn, char *server, char *port, uint8_t
 }
 
 int dccs_listen(struct dccs_connection *conn, char *port) {
+    fprintf(stderr, "dccs_listen(): port = %s.\n", port);
+
     conn->cm_channel = rdma_create_event_channel();
     if (conn->cm_channel == NULL) {
         fprintf(stderr, " rdma_create_event_channel failed\n");
@@ -163,6 +183,7 @@ int dccs_listen(struct dccs_connection *conn, char *port) {
     struct addrinfo *res;
     struct rdma_cm_event *event;
     struct addrinfo hints;
+    struct rdma_conn_param conn_param;
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -173,6 +194,7 @@ int dccs_listen(struct dccs_connection *conn, char *port) {
         return FAILURE;
     }
 
+    memset(&sin, 0, sizeof sin);
     sin.sin_addr.s_addr = 0;
     sin.sin_family = PF_INET;
     sin.sin_port = htons((unsigned short)atoi(port));
@@ -199,8 +221,14 @@ int dccs_listen(struct dccs_connection *conn, char *port) {
 
     conn->cm_id = (struct rdma_cm_id*)event->id;
 
-    if (rdma_accept(conn->cm_id, NULL)) {
+    memset(&conn_param, 0, sizeof conn_param);
+    //conn_param.retry_count = 7;
+    //conn_param.rnr_retry_count = 7;
+
+    if (rdma_accept(conn->cm_id, &conn_param)) {
+    //if (rdma_accept(conn->cm_id, NULL)) {
         fprintf(stderr, "Function rdma_accept failed\n");
+        perror("rdma_accept");
         return 1;
     }
 
