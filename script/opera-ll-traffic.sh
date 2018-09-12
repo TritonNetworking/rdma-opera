@@ -11,8 +11,9 @@ LATENCY_GAP=1000    # in µs
 ITERS=$((60 * 1000))
 BLOCKSIZE=2
 WAIT=false
+TOS=4
 
-COMMON_FLAG="-R -U -s $BLOCKSIZE -n $ITERS --latency_gap $LATENCY_GAP"
+COMMON_FLAG="-R -U -T $TOS -s $BLOCKSIZE -n $ITERS --latency_gap $LATENCY_GAP"
 
 # Program settings
 LOG_DIR=$HOME/opera.logs
