@@ -1,0 +1,3 @@
+[submodule "thirdparty/perftest"]
+	path = thirdparty/perftest
+	url = git@bitbucket.org:nilyibo/perftest.git

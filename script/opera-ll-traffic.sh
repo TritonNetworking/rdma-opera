@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+cd "$(dirname "$0")"
+
 min_host_num=30
 max_host_num=36
 
@@ -16,8 +18,9 @@ TOS=4
 COMMON_FLAG="-R -U -T $TOS -s $BLOCKSIZE -n $ITERS --latency_gap $LATENCY_GAP"
 
 # Program settings
+source ./config
 LOG_DIR=$HOME/opera.logs
-PROGRAM=~/Source/examples/perftest/ib_send_lat
+PROGRAM="$REPO_DIR/thirdparty/perftest/ib_send_lat"
 PORT_PREFIX="100"
 HOST_PREFIX="b09-"
 
