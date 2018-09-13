@@ -52,13 +52,14 @@ do
     conn_name="$server_num-$client_num"
     port="$PORT_PREFIX$client_num"
     logfile="$LOG_DIR/$conn_name.log"
+    errfile="$LOG_DIR/$conn_name.err"
     echo "Launching server $conn_name ..."
     flags="$COMMON_FLAG -p $port"
     if $WAIT; then
-        $PROGRAM $flags > $logfile &
+        $PROGRAM $flags > $logfile 2> $errfile &
         spids[${num}]=$!
     else
-        nohup $PROGRAM $flags > $logfile &
+        nohup $PROGRAM $flags > $logfile 2> $errfile &
     fi
 done
 echo
@@ -78,13 +79,14 @@ do
     conn_name="$client_num-$server_num"
     port="$PORT_PREFIX$client_num"
     logfile="$LOG_DIR/$conn_name.log"
+    errfile="$LOG_DIR/$conn_name.err"
     echo "Launching client $conn_name ..."
     flags="$COMMON_FLAG -p $port $server"
     if $WAIT; then
-        $PROGRAM $flags > $logfile &
+        $PROGRAM $flags > $logfile 2> $errfile &
         cpids[${num}]=$!
     else
-        nohup $PROGRAM $flags > $logfile &
+        nohup $PROGRAM $flags > $logfile 2> $errfile &
     fi
 done
 echo
