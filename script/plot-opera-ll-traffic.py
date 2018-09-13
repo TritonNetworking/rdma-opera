@@ -3,7 +3,6 @@
 
 import argparse, re, os
 import numpy as np
-import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', '--logs', required=True, nargs='+', type=argparse.FileType('r'), help='Log files')
@@ -12,6 +11,12 @@ parser.add_argument('-p', '--plot', required=True, choices=[ 'cdf', 'time' ], he
 parser.add_argument('-o', '--output', type=argparse.FileType('w'), help='Output plot to file')
 parser.add_argument('-s', '--stats', action="store_true", help='Whether to show stats')
 args = parser.parse_args()
+
+if args.output:
+    # Workaround w/o X window server
+    import matplotlib
+    matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 
 GAP = 0
 #GAP = 1000
