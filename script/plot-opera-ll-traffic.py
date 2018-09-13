@@ -64,7 +64,7 @@ def process_file(f):
     return rtts if args.export else []
 
 def main():
-    #plt.figure(figsize=(8, 6))
+    plt.figure(figsize=(8, 6))
     if args.export:
         mat = []
     for f in args.logs:
@@ -72,8 +72,11 @@ def main():
         rtts = process_file(f)
         if args.export:
             mat.append(rtts)
-    plt.xlabel('RTT (us)')
-    plt.xlim(0.0)
+    if args.plot == 'cdf':
+        plt.xlabel('RTT (us)')
+        plt.xlim(0.0, 100.0)
+    else:
+        plt.xlabel('sequence #')
     #plt.ylim(0.0, 1.0)
     plt.legend()
     if args.output:
