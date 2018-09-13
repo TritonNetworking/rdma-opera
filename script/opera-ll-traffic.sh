@@ -3,7 +3,7 @@
 cd "$(dirname "$0")"
 
 min_host_num=30
-max_host_num=36
+max_host_num=44
 
 curr_host=$(hostname -s)
 curr_host_num=${curr_host:4:2}
