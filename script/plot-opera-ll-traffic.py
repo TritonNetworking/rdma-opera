@@ -27,14 +27,17 @@ def process_file(f):
     rtts = []
     for line in f:
         line = line.rstrip()
-        if line == "#, usec":
+        if header and line == "#, usec":
             header=False
             continue
         if header:
             continue
-        if line.startswith(" "):
+        if not header and line.startswith(" "):
             break
         splitted = line.split(", ")
+        if len(splitted) < 2:
+            print 'Skipping unexpected line "%s" ...' % line
+            continue
         index = int(splitted[0])
         latency = float(splitted[1])
         rtt = 2 * (latency - GAP)
@@ -50,11 +53,14 @@ def process_file(f):
 
     if args.stats:
         rtt_sorted = np.sort(rtts)
-        percent90 = rtt_sorted[int(len(rtt_sorted) * 0.90)]
-        percent99 = rtt_sorted[int(len(rtt_sorted) * 0.99)]
-        minv = min(rtt_sorted)
-        maxv = max(rtt_sorted)
-        print "count = %d, min = %f, max = %f, 90 = %f, 99 = %f" % (len(rtt_sorted), minv, maxv, percent90, percent99)
+        if len(rtt_sorted) > 0:
+            percent90 = rtt_sorted[int(len(rtt_sorted) * 0.90)]
+            percent99 = rtt_sorted[int(len(rtt_sorted) * 0.99)]
+            minv = min(rtt_sorted)
+            maxv = max(rtt_sorted)
+            print "count = %d, min = %f, max = %f, 90 = %f, 99 = %f" % (len(rtt_sorted), minv, maxv, percent90, percent99)
+        else:
+            print "count = %d, no data in file" % len(rtt_sorted)
     return rtts if args.export else []
 
 def main():
