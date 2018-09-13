@@ -6,3 +6,5 @@ sudo apt-get install -y dos2unix
 sudo apt-get install -y cpufrequtils
 sudo apt-get install -y libhugetlbfs-dev
 
+pip install numpy matplotlib
+sudo apt-get install -y python-tk
