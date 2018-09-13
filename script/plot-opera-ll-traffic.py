@@ -7,8 +7,9 @@ import matplotlib.pyplot as plt
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', '--logs', required=True, nargs='+', type=argparse.FileType('r'), help='Log files')
-parser.add_argument('-o', '--output', required=False, type=argparse.FileType('w'), help='Combined output CSV file')
+parser.add_argument('-e', '--export', required=False, type=argparse.FileType('w'), help='Export to CSV file')
 parser.add_argument('-p', '--plot', required=True, choices=[ 'cdf', 'time' ], help='The type of plot')
+parser.add_argument('-o', '--output', type=argparse.FileType('w'), help='Output plot to file')
 parser.add_argument('-s', '--stats', action="store_true", help='Whether to show stats')
 args = parser.parse_args()
 
@@ -43,7 +44,7 @@ def plot_cdf(f):
         minv = min(x)
         maxv = max(x)
         print "min = %f, max = %f, 90 = %f, 99 = %f" % (minv, maxv, percent90, percent99)
-    return rtts if args.output else []
+    return rtts if args.export else []
 
 def plot_time_series(f):
     name = os.path.split(f.name)[-1].split('.')[0]
@@ -74,26 +75,37 @@ def plot_time_series(f):
         minv = min(rtt_sorted)
         maxv = max(rtt_sorted)
         print "min = %f, max = %f, 90 = %f, 99 = %f" % (minv, maxv, percent90, percent99)
-    return rtts if args.output else []
+    return rtts if args.export else []
 
 def main():
-    mat = []
+    #plt.figure(figsize=(8, 6))
+    if args.export:
+        mat = []
     for f in args.logs:
+        print 'Processing "%s" ...' % f.name
         if args.plot == 'cdf':
             rtts = plot_cdf(f)
         else:
             rtts = plot_time_series(f)
-        mat.append(rtts)
+        if args.export:
+            mat.append(rtts)
+    plt.xlabel('RTT (us)')
     plt.xlim(0.0)
     #plt.ylim(0.0, 1.0)
     plt.legend()
-    plt.show()
     if args.output:
+        print 'Saving figure to "%s" ...' % args.output.name
+        plt.savefig(args.output.name)
+    else:
+        print 'Showing plot ...'
+        plt.show()
+
+    if args.export:
         length = len(mat[0])
         for index in xrange(length):
             arr = [mat[i][index] for i in xrange(len(mat))]
             line = ",".join([str(x) for x in arr]) + "\n"
-            args.output.write(line)
+            args.export.write(line)
 
 if __name__ == "__main__":
     main()
