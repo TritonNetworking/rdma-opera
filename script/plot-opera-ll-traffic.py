@@ -58,7 +58,10 @@ def process_file(f):
             percent99 = rtt_sorted[int(len(rtt_sorted) * 0.99)]
             minv = min(rtt_sorted)
             maxv = max(rtt_sorted)
-            print "count = %d, min = %f, max = %f, 90 = %f, 99 = %f" % (len(rtt_sorted), minv, maxv, percent90, percent99)
+            average = sum(rtt_sorted) / len(rtt_sorted)
+            median = rtt_sorted[len(rtt_sorted - 1) / 2]
+            print "count = %d, min = %f, max = %f, average = %f, median = %f, 90 = %f, 99 = %f" \
+                    % (len(rtt_sorted), minv, maxv, average, median, percent90, percent99)
         else:
             print "count = %d, no data in file" % len(rtt_sorted)
     return rtts if args.export else []
@@ -78,7 +81,7 @@ def main():
     else:
         plt.xlabel('sequence #')
     #plt.ylim(0.0, 1.0)
-    plt.legend()
+    #plt.legend()
     if args.output:
         print 'Saving figure to "%s" ...' % args.output.name
         plt.savefig(args.output.name)
