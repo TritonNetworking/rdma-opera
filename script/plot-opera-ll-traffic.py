@@ -20,6 +20,8 @@ import matplotlib.pyplot as plt
 
 GAP = 0
 #GAP = 1000
+RATE = 1000     # messages per second
+warmup = 30     # warmup time
 
 def process_file(f):
     name = os.path.split(f.name)[-1].split('.')[0]
@@ -43,6 +45,7 @@ def process_file(f):
         rtt = 2 * (latency - GAP)
         rtts.append(rtt)
 
+    rtts = rtts[(warmup * RATE):]   # Discard the warmup data
     if args.plot == 'cdf':
         x = np.sort(rtts)
         y = np.arange(len(x)) / float(len(x))
@@ -77,7 +80,7 @@ def main():
             mat.append(rtts)
     if args.plot == 'cdf':
         plt.xlabel('RTT (us)')
-        plt.xlim(0.0, 100.0)
+        plt.xlim(0.0, 40.0)
     else:
         plt.xlabel('sequence #')
     #plt.ylim(0.0, 1.0)
