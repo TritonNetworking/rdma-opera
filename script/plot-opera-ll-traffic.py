@@ -6,10 +6,11 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', '--logs', required=True, nargs='+', type=argparse.FileType('r'), help='Log files')
+parser.add_argument('--show-legend', required=False, action='store_true', help='Show legend')
 parser.add_argument('-e', '--export', required=False, type=argparse.FileType('w'), help='Export to CSV file')
 parser.add_argument('-p', '--plot', required=True, choices=[ 'cdf', 'time' ], help='The type of plot')
 parser.add_argument('-o', '--output', type=argparse.FileType('w'), help='Output plot to file')
-parser.add_argument('-s', '--stats', action="store_true", help='Whether to show stats')
+parser.add_argument('-s', '--stats', action='store_true', help='Whether to show stats')
 args = parser.parse_args()
 
 if args.output:
@@ -84,10 +85,11 @@ def main():
     else:
         plt.xlabel('sequence #')
     #plt.ylim(0.0, 1.0)
-    #plt.legend()
+    if args.show_legend:
+        plt.legend()
     if args.output:
         print 'Saving figure to "%s" ...' % args.output.name
-        plt.savefig(args.output.name)
+        plt.savefig(args.output.name, dpi=300)
     else:
         print 'Showing plot ...'
         plt.show()
