@@ -43,6 +43,13 @@ rm -f "$LOG_DIR/*"
 
 # Each host connects to every host behind it and accepts connections from every host before it.
 
+assign_core()
+{
+    hostnum=$1
+    basenum=13
+    echo $(( (hostnum - min_host_num) / 2 + basenum ))
+}
+
 # Launch servers
 echo "Launching servers ..."
 for (( num = $min_host_num; num < $curr_host_num; num += 2 ))
@@ -55,11 +62,12 @@ do
     errfile="$LOG_DIR/$conn_name.err"
     echo "Launching server $conn_name ..."
     flags="$COMMON_FLAG -p $port"
+    core=$(assign_core $num)
     if $WAIT; then
-        $PROGRAM $flags > $logfile 2> $errfile &
+        taskset --cpu-list $core $PROGRAM $flags > $logfile 2> $errfile &
         spids[${num}]=$!
     else
-        nohup $PROGRAM $flags > $logfile 2> $errfile &
+        nohup taskset --cpu-list $core $PROGRAM $flags > $logfile 2> $errfile &
     fi
 done
 echo
@@ -82,11 +90,12 @@ do
     errfile="$LOG_DIR/$conn_name.err"
     echo "Launching client $conn_name ..."
     flags="$COMMON_FLAG -p $port $server"
+    core=$(assign_core $num)
     if $WAIT; then
-        $PROGRAM $flags > $logfile 2> $errfile &
+        taskset --cpu-list $core $PROGRAM $flags > $logfile 2> $errfile &
         cpids[${num}]=$!
     else
-        nohup $PROGRAM $flags > $logfile 2> $errfile &
+        nohup taskset --cpu-list $core $PROGRAM $flags > $logfile 2> $errfile &
     fi
 done
 echo
