@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('-l', '--logs', required=True, nargs='+', type=argparse.FileType('r'), help='Log files')
 parser.add_argument('--show-legend', required=False, action='store_true', help='Show legend')
 parser.add_argument('-e', '--export', required=False, type=argparse.FileType('w'), help='Export to CSV file')
-parser.add_argument('-p', '--plot', required=True, choices=[ 'cdf', 'time' ], help='The type of plot')
+parser.add_argument('-p', '--plot', required=True, choices=[ 'cdf', 'time', 'scatter' ], help='The type of plot')
 parser.add_argument('-o', '--output', type=argparse.FileType('w'), help='Output plot to file')
 parser.add_argument('-s', '--stats', action='store_true', help='Whether to show stats')
 args = parser.parse_args()
@@ -50,10 +50,14 @@ def process_file(f):
     if args.plot == 'cdf':
         x = np.sort(rtts)
         y = np.arange(len(x)) / float(len(x))
+        plt.plot(x, y, linewidth=0.75, label=name)
     else:
         x = np.arange(len(rtts))
         y = np.array(rtts)
-    plt.plot(x, y, linewidth=0.75, label=name)
+        if args.plot == 'time':
+            plt.plot(x, y, linewidth=0.75, label=name)
+        if args.plot == 'scatter':
+            plt.scatter(x, y, label=name, s=1)
 
     if args.stats:
         rtt_sorted = np.sort(rtts)
