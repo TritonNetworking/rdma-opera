@@ -46,7 +46,7 @@ rm -f "$LOG_DIR/*"
 assign_core()
 {
     hostnum=$1
-    basenum=13
+    basenum=8
     echo $(( (hostnum - min_host_num) / 2 + basenum ))
 }
 
