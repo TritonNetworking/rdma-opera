@@ -28,6 +28,7 @@ def process_file(f):
     name = os.path.split(f.name)[-1].split('.')[0]
     header=True
     rtts = []
+    over1s = 0
     for line in f:
         line = line.rstrip()
         if header and line == "#, usec":
@@ -44,6 +45,8 @@ def process_file(f):
         index = int(splitted[0])
         latency = float(splitted[1])
         rtt = 2 * (latency - GAP)
+        if rtt > 1e6:
+            over1s += 1
         rtts.append(rtt)
 
     rtts = rtts[(warmup * RATE):]   # Discard the warmup data
@@ -68,8 +71,8 @@ def process_file(f):
             maxv = max(rtt_sorted)
             average = sum(rtt_sorted) / len(rtt_sorted)
             median = rtt_sorted[len(rtt_sorted - 1) / 2]
-            print "count = %d, min = %f, max = %f, average = %f, median = %f, 90 = %f, 99 = %f" \
-                    % (len(rtt_sorted), minv, maxv, average, median, percent90, percent99)
+            print "count = %d, min = %f, max = %f, average = %f, median = %f, 90 = %f, 99 = %f, over 1s = %d" \
+                    % (len(rtt_sorted), minv, maxv, average, median, percent90, percent99, over1s)
         else:
             print "count = %d, no data in file" % len(rtt_sorted)
     return rtts if args.export else []
