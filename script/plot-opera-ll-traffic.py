@@ -91,6 +91,9 @@ def main():
         plt.xlim(0.0, 40.0)
     else:
         plt.xlabel('sequence #')
+        #plt.ylim(0.0, 1000.0)
+        plt.ylabel('RTT (us)')
+        plt.yscale('log')
     #plt.ylim(0.0, 1.0)
     if args.show_legend:
         plt.legend()
