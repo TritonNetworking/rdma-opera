@@ -10,12 +10,13 @@ curr_host_num=${curr_host:4:2}
 
 # Run configuration
 LATENCY_GAP=1000    # in µs
-ITERS=$((15 * 60 * 1000))
-BLOCKSIZE=2
+ITERS=$((1 * 30 * 1000 / 2))
+BLOCKSIZE=6
 WAIT=false
 TOS=4
 
-COMMON_FLAG="-R -U -T $TOS -s $BLOCKSIZE -n $ITERS --latency_gap $LATENCY_GAP"
+COMMON_FLAG+="-R -U -T $TOS -s $BLOCKSIZE -n $ITERS --latency_gap $LATENCY_GAP "
+#COMMON_FLAG+="--retry_count=1 -u 0 "
 
 # Program settings
 source ./config

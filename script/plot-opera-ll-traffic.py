@@ -22,7 +22,7 @@ import matplotlib.pyplot as plt
 GAP = 0
 #GAP = 1000
 RATE = 1000     # messages per second
-warmup = 30     # warmup time
+warmup = 0      # warmup time
 
 def process_file(f):
     name = os.path.split(f.name)[-1].split('.')[0]
@@ -49,7 +49,7 @@ def process_file(f):
             over1s += 1
         rtts.append(rtt)
 
-    rtts = rtts[(warmup * RATE):]   # Discard the warmup data
+    rtts = rtts[int(warmup * RATE):]   # Discard the warmup data
     if args.plot == 'cdf':
         x = np.sort(rtts)
         y = np.arange(len(x)) / float(len(x))
@@ -89,12 +89,12 @@ def main():
     if args.plot == 'cdf':
         plt.xlabel('RTT (us)')
         plt.xlim(0.0, 40.0)
+        #plt.ylim(0.0, 1.0)
     else:
         plt.xlabel('sequence #')
         #plt.ylim(0.0, 1000.0)
         plt.ylabel('RTT (us)')
         plt.yscale('log')
-    #plt.ylim(0.0, 1.0)
     if args.show_legend:
         plt.legend()
     if args.output:
