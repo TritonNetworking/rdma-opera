@@ -39,7 +39,7 @@ def print_stats(l):
     print "%d,%f,%f,%f,%f,%f,%f,%d" \
         % (len(s), minv, maxv, avg, med, p90, p99, over1s)
 
-def process_file(f):
+def process_log(f):
     name = os.path.split(f.name)[-1].split('.')[0]
     header=True
     rtts = []
@@ -60,7 +60,10 @@ def process_file(f):
         latency = float(splitted[1])
         rtt = 2 * (latency - GAP)
         rtts.append(rtt)
+    return rtts
 
+def plot_log(f):
+    rtts = process_log(f)
     if args.plot == 'cdf':
         rtts = rtts[int(warmup * RATE):]   # Discard the warmup data
         x = np.sort(rtts)
@@ -85,7 +88,7 @@ def main():
         print 'count,min,max,average,median,percent90,percent99,over1s'
     for f in args.logs:
         print >> sys.stderr, 'Processing "%s" ...' % f.name
-        rtts = process_file(f)
+        rtts = plot_log(f)
         if args.stats or args.export:
             mat.append(rtts)
     if args.plot == 'cdf':
