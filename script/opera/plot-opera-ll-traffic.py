@@ -6,6 +6,7 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', '--logs', required=True, nargs='+', type=argparse.FileType('r'), help='Log files')
+parser.add_argument('-t', '--ttls', required=True, nargs='+', type=argparse.FileType('r'), help='TTL files')
 parser.add_argument('--show-legend', required=False, action='store_true', help='Show legend')
 parser.add_argument('-e', '--export', required=False, type=argparse.FileType('w'), help='Export to CSV file')
 parser.add_argument('-p', '--plot', required=True, choices=[ 'cdf', 'time', 'scatter' ], help='The type of plot')
@@ -72,6 +73,9 @@ def print_stats(l):
     print "%d,%f,%f,%f,%f,%f,%f,%d" \
         % (len(s), minv, maxv, avg, med, p90, p99, over1s)
 
+def get_shortname(filename):
+    return os.path.split(filename)[-1].split('.')[0]
+
 def process_log(f):
     header=True
     rtts = []
@@ -95,9 +99,21 @@ def process_log(f):
         rtts.append(rtt)
     return rtts
 
-def plot_log(f):
-    name = os.path.split(f.name)[-1].split('.')[0]
-    rtts = process_log(f)
+def process_ttl(f):
+    ttls = []
+    header_count = 1
+    for index, line in enumerate(f):
+        if index < header_count:
+            continue
+        line = line.rstrip()
+        splitted = line.split(',')
+        src = splitted[0]
+        dst = splitted[1]
+        ttl = int(splitted[2])
+        ttls.append(ttl)
+    return ttls
+
+def plot_log(rtts, name):
     if args.plot == 'cdf':
         # Discard the warmup data in CDF
         plot_cdf(rtts[int(warmup * RATE):], name)
@@ -110,15 +126,37 @@ def plot_log(f):
         print_stats(rtts)
     return rtts
 
+def plot_ttl_cdf(arr_rtt, arr_ttl, name):
+    d = {}
+    rtts = arr_rtt[int(warmup * RATE):]
+    ttls = arr_ttl[int(warmup * RATE):]
+    for i, rtt in enumerate(rtts):
+        ttl = ttls[i]
+        if ttl not in d:
+            d[ttl] = []
+        d[ttl].append(rtt)
+    for ttl in d:
+        plot_cdf(d[ttl], get_shortname(name) + ', TTL = %d' % ttl)
+
 def main():
     plt.figure(figsize=(8, 6))
     if args.stats or args.export:
         mat = []
     if args.stats:
         print 'count,min,max,average,median,percent90,percent99,over1s'
-    for f in args.logs:
+    assert len(args.ttls) == 0 or len(args.logs) == len(args.ttls), "Not the same number of TTL files as log files."
+    assert len(args.ttls) == 0 or args.plot == 'cdf', "Only \"cdf\" mode is supported with TTL logs."
+    for index in xrange(len(args.logs)):
+        f = args.logs[index]
         print >> sys.stderr, 'Processing "%s" ...' % f.name
-        rtts = plot_log(f)
+        name = get_shortname(f.name)
+        rtts = process_log(f)
+        if len(args.ttls) > 0:
+            ttls = process_ttl(args.ttls[index])
+            assert len(rtts) + 1 == len(ttls), 'Not the same number of TTL entries as RTTs'
+            plot_ttl_cdf(rtts, ttls, name)
+        else:
+            plot_log(rtts, name)
         if args.stats or args.export:
             mat.append(rtts)
     #end
