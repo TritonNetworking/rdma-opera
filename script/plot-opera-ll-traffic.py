@@ -19,10 +19,43 @@ if args.output:
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 
-GAP = 0
-#GAP = 1000
-RATE = 1000     # messages per second
-warmup = 10 / 2 # warmup time in seconds / 2
+# LL traffic configuration parameters
+GAP = 1000                  # GAP in µs
+warmup = 10                 # warmup time in seconds
+
+# Derived parameters
+RATE = int(1e6 / GAP / 2)   # messages per second, both sides have a gap
+
+# Plot options
+LINEWIDTH=0.75
+
+def plot_cdf(l, name):
+    x = np.sort(l)
+    y = np.arange(len(l)) / float(len(l))
+    plt.plot(x, y, linewidth=LINEWIDTH, label=name)
+
+def plot_time(l, name):
+    x = np.range(len(l))
+    y = np.array(l)
+    plt.plot(x, y, linewidth=LINEWIDTH, label=name)
+
+def plot_scatter(l, name):
+    x = np.range(len(l))
+    y = np.array(l)
+    plt.plot(x, y, s=1, label=name)
+
+def set_plot_options():
+    if args.plot == 'cdf':
+        plt.xlabel('RTT (us)')
+        plt.xlim(0.0, 40.0)
+        #plt.ylim(0.0, 1.0)
+    else:
+        plt.xlabel('sequence #')
+        #plt.ylim(0.0, 1000.0)
+        plt.ylabel('RTT (us)')
+        #plt.yscale('log')
+    if args.show_legend:
+        plt.legend()
 
 def print_stats(l):
     if len(l) == 0:
@@ -40,7 +73,6 @@ def print_stats(l):
         % (len(s), minv, maxv, avg, med, p90, p99, over1s)
 
 def process_log(f):
-    name = os.path.split(f.name)[-1].split('.')[0]
     header=True
     rtts = []
     for line in f:
@@ -58,24 +90,22 @@ def process_log(f):
             continue
         index = int(splitted[0])
         latency = float(splitted[1])
-        rtt = 2 * (latency - GAP)
+        # Latency no longer includes the gap
+        rtt = 2 * latency
         rtts.append(rtt)
     return rtts
 
 def plot_log(f):
+    name = os.path.split(f.name)[-1].split('.')[0]
     rtts = process_log(f)
     if args.plot == 'cdf':
-        rtts = rtts[int(warmup * RATE):]   # Discard the warmup data
-        x = np.sort(rtts)
-        y = np.arange(len(x)) / float(len(x))
-        plt.plot(x, y, linewidth=0.75, label=name)
-    else:
-        x = np.arange(len(rtts))
-        y = np.array(rtts)
-        if args.plot == 'time':
-            plt.plot(x, y, linewidth=0.75, label=name)
-        if args.plot == 'scatter':
-            plt.scatter(x, y, label=name, s=1)
+        # Discard the warmup data in CDF
+        plot_cdf(rtts[int(warmup * RATE):], name)
+    elif args.plot == 'time':
+        plot_time(rtts, name)
+    elif args.plot == 'scatter':
+        plot_scatter(rtts, name)
+    #end
     if args.stats:
         print_stats(rtts)
     return rtts
@@ -91,18 +121,8 @@ def main():
         rtts = plot_log(f)
         if args.stats or args.export:
             mat.append(rtts)
-    if args.plot == 'cdf':
-        plt.xlabel('RTT (us)')
-        plt.xlim(0.0, 40.0)
-        #plt.ylim(0.0, 1.0)
-    else:
-        plt.xlabel('sequence #')
-        #plt.ylim(0.0, 1000.0)
-        plt.ylabel('RTT (us)')
-        #plt.yscale('log')
-    if args.show_legend:
-        plt.legend()
-
+    #end
+    set_plot_options()
     if args.output:
         print >> sys.stderr, 'Saving figure to "%s" ...' % args.output.name
         plt.savefig(args.output.name, dpi=300)
