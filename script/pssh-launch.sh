@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+cd "$(dirname "$0")"
+
 hosts=$(cat hosts.config | paste -s -d " " -)
 DEFAULT_COMMAND='echo "Hello from $HOSTNAME"'
 command=${1:-$DEFAULT_COMMAND}

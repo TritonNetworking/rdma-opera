@@ -19,7 +19,7 @@ COMMON_FLAG+="-R -U -T $TOS -s $BLOCKSIZE -n $ITERS --latency_gap $LATENCY_GAP "
 #COMMON_FLAG+="--retry_count=1 -u 0 "
 
 # Program settings
-source ./config
+source ../config
 LOG_DIR=$HOME/opera.logs
 PROGRAM="$REPO_DIR/thirdparty/perftest/ib_send_lat"
 PORT_PREFIX="100"
