@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding=utf-8
 
-import argparse, re, os
+import argparse, re, os, sys
 import numpy as np
 
 parser = argparse.ArgumentParser()
@@ -22,13 +22,27 @@ import matplotlib.pyplot as plt
 GAP = 0
 #GAP = 1000
 RATE = 1000     # messages per second
-warmup = 0      # warmup time
+warmup = 10 / 2 # warmup time in seconds / 2
+
+def print_stats(l):
+    if len(l) == 0:
+        print >> sys.stderr, "count = %d, no data in file" % len(s)
+        return
+    s = np.sort(l)
+    p90 = s[int(len(s) * 0.90)]
+    p99 = s[int(len(s) * 0.99)]
+    minv = min(s)
+    maxv = max(s)
+    avg = sum(s) / len(s)
+    med = s[len(s - 1) / 2]
+    over1s = sum(1 for e in s if e > 1e6)
+    print "%d,%f,%f,%f,%f,%f,%f,%d" \
+        % (len(s), minv, maxv, avg, med, p90, p99, over1s)
 
 def process_file(f):
     name = os.path.split(f.name)[-1].split('.')[0]
     header=True
     rtts = []
-    over1s = 0
     for line in f:
         line = line.rstrip()
         if header and line == "#, usec":
@@ -45,12 +59,10 @@ def process_file(f):
         index = int(splitted[0])
         latency = float(splitted[1])
         rtt = 2 * (latency - GAP)
-        if rtt > 1e6:
-            over1s += 1
         rtts.append(rtt)
 
-    rtts = rtts[int(warmup * RATE):]   # Discard the warmup data
     if args.plot == 'cdf':
+        rtts = rtts[int(warmup * RATE):]   # Discard the warmup data
         x = np.sort(rtts)
         y = np.arange(len(x)) / float(len(x))
         plt.plot(x, y, linewidth=0.75, label=name)
@@ -61,30 +73,20 @@ def process_file(f):
             plt.plot(x, y, linewidth=0.75, label=name)
         if args.plot == 'scatter':
             plt.scatter(x, y, label=name, s=1)
-
     if args.stats:
-        rtt_sorted = np.sort(rtts)
-        if len(rtt_sorted) > 0:
-            percent90 = rtt_sorted[int(len(rtt_sorted) * 0.90)]
-            percent99 = rtt_sorted[int(len(rtt_sorted) * 0.99)]
-            minv = min(rtt_sorted)
-            maxv = max(rtt_sorted)
-            average = sum(rtt_sorted) / len(rtt_sorted)
-            median = rtt_sorted[len(rtt_sorted - 1) / 2]
-            print "count = %d, min = %f, max = %f, average = %f, median = %f, 90 = %f, 99 = %f, over 1s = %d" \
-                    % (len(rtt_sorted), minv, maxv, average, median, percent90, percent99, over1s)
-        else:
-            print "count = %d, no data in file" % len(rtt_sorted)
-    return rtts if args.export else []
+        print_stats(rtts)
+    return rtts
 
 def main():
     plt.figure(figsize=(8, 6))
-    if args.export:
+    if args.stats or args.export:
         mat = []
+    if args.stats:
+        print 'count,min,max,average,median,percent90,percent99,over1s'
     for f in args.logs:
-        print 'Processing "%s" ...' % f.name
+        print >> sys.stderr, 'Processing "%s" ...' % f.name
         rtts = process_file(f)
-        if args.export:
+        if args.stats or args.export:
             mat.append(rtts)
     if args.plot == 'cdf':
         plt.xlabel('RTT (us)')
@@ -94,17 +96,24 @@ def main():
         plt.xlabel('sequence #')
         #plt.ylim(0.0, 1000.0)
         plt.ylabel('RTT (us)')
-        plt.yscale('log')
+        #plt.yscale('log')
     if args.show_legend:
         plt.legend()
+
     if args.output:
-        print 'Saving figure to "%s" ...' % args.output.name
+        print >> sys.stderr, 'Saving figure to "%s" ...' % args.output.name
         plt.savefig(args.output.name, dpi=300)
     else:
-        print 'Showing plot ...'
+        print >> sys.stderr, 'Showing plot ...'
         plt.show()
 
+    if args.stats:
+        print >> sys.stderr, 'Getting stats across all logs ...'
+        rtts = reduce(lambda x, y: x + y, mat)
+        print_stats(rtts)
+
     if args.export:
+        print >> sys.stderr, 'Exporting all data to CSV ...'
         length = len(mat[0])
         for index in xrange(length):
             arr = [mat[i][index] for i in xrange(len(mat))]
