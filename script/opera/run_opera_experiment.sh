@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 
-REPO_DIR=~/Source/dc-circuitswitch
-SCRIPT_DIR="$REPO_DIR/script"
+cd "$(dirname "$0")"
+
+source ../config
+
 LOG_DIR=~/opera.logs
 ALL_LOGS=~/Source/opera.data
 
@@ -9,8 +11,34 @@ ALL_LOGS=~/Source/opera.data
 USE_CLOCK=true
 CLOCK_FREQ=250
 
+# Programs
+SETSTATE_EXEC=/root/set_state
+CLOCK_EXEC=/root/clock
+PSSH_LAUNCH=$SCRIPT_DIR/pssh-launch.sh
+OPERA_LAUNCH=$SCRIPT_DIR/opera/opera-ll-traffic.sh
+OPERA_PLOT=$SCRIPT_DIR/opera/plot-opera-ll-traffic.py
+
 host_count=$(cat $SCRIPT_DIR/hosts.config | wc -l)
 conn_count=$(( host_count * (host_count - 1) ))
+
+check_executable()
+{
+    user=$1
+    executable=$2
+    echo "Checking executable \"$executable\" ..."
+    if [ $user = "root" ]; then
+        sudo [ -x $executable ]
+        success=$?
+    else
+        [ -x $executable ]
+        success=$?
+    fi
+
+    if [ $success -ne 0 ]; then
+        >&2 echo "ERROR: \"$executable\" not found."
+        abort
+    fi
+}
 
 check_config()
 {
@@ -19,7 +47,15 @@ check_config()
         mkdir -p $LOG_DIR
     fi
 
-    # TBA
+    check_executable $USER $PSSH_LAUNCH
+    check_executable $USER $OPERA_LAUNCH
+    check_executable $USER $OPERA_PLOT
+    check_executable "root" $SETSTATE_EXEC
+    if $USE_CLOCK; then
+        check_executable "root" $CLOCK_EXEC
+    fi
+
+    >&2 echo "Done"
     >&2 echo
 }
 
@@ -41,41 +77,41 @@ print_config()
 
 get_conn_count()
 {
-    echo $($SCRIPT_DIR/pssh-launch.sh "ps aux | grep [i]b_send_lat" | grep "ib_send_lat" | wc -l)
+    echo $($PSSH_LAUNCH "ps aux | grep [i]b_send_lat" | grep "ib_send_lat" | wc -l)
 }
 
 get_active_count()
 {
-    echo $($SCRIPT_DIR/pssh-launch.sh "ps aux | grep [i]b_send_lat" | grep "ib_send_lat" | grep " R " | wc -l)
+    echo $($PSSH_LAUNCH "ps aux | grep [i]b_send_lat" | grep "ib_send_lat" | grep " R " | wc -l)
 }
 
 launch_ll_traffic()
 {
     >&2 echo "Launching LL traffic ..."
-    $SCRIPT_DIR/pssh-launch.sh `realpath $SCRIPT_DIR/opera/opera-ll-traffic.sh`
+    $PSSH_LAUNCH $(realpath $OPERA_LAUNCH)
 }
 
 kill_ll_traffic()
 {
     >&2 echo "Killing LL traffic ..."
-    $SCRIPT_DIR/pssh-launch.sh "killall ib_send_lat"
+    $PSSH_LAUNCH "killall ib_send_lat"
 }
 
 ps_ll_traffic()
 {
-    echo $SCRIPT_DIR/pssh-launch.sh "ps aux | grep [i]b_send_lat"
+    echo $($PSSH_LAUNCH "ps aux | grep [i]b_send_lat")
 }
 
 switch_set_l3()
 {
     >&2 echo "Setting switch to L3 mode ..."
-    sudo /root/set_state 64
+    sudo $SETSTATE_EXEC 64
 }
 
 switch_run_clock_bg()
 {
-    >&2 echo "Running \"clock $CLOCK_FREQ\" in background ..."
-    sudo /root/clock $CLOCK_FREQ
+    >&2 echo "Running \"$CLOCK_EXEC $CLOCK_FREQ\" in background ..."
+    sudo $CLOCK_EXEC $CLOCK_FREQ
     pid=$!
     echo $pid
 }
@@ -109,13 +145,13 @@ abort()
 plot_cdf_and_save_stats()
 {
     $logdir=$1
-    $SCRIPT_DIR/opera/plot-opera-ll-traffic.py -l $logdir/raw/*.log -p cdf -o $logdir/cdf.png -s > $logdir/stats.txt
+    $OPERA_PLOT -l $logdir/raw/*.log -p cdf -o $logdir/cdf.png -s > $logdir/stats.txt
 }
 
 plot_scatter()
 {
     $logdir=$1
-    $SCRIPT_DIR/opera/plot-opera-ll-traffic.py -l $logdir/raw/*.log -p scatter -o $logdir/scatter.png
+    $OPERA_PLOT -l $logdir/raw/*.log -p scatter -o $logdir/scatter.png
 }
 
 run_experiment()
@@ -168,14 +204,23 @@ run_experiment()
         fi
         sleep 1
     done
-    ps_ll_traffic > $LOG_DIR/ps.out
 
-    >&2 echo "All $conn_count LL traffic have launched. Sleeping for 5s ..."
-    sleep 5
+    >&2 echo "All $conn_count LL traffic have launched."
 
     if $USE_CLOCK; then
+        >&2 echo "Sleeping for 5s ..."
+        sleep 5
         clock_pid=$(switch_run_clock_bg)
+    else
+        while true; do
+            >&2 echo -n "Continue after running alternative clock source [c] "
+            read ans
+            if [[ $ans == "c" ]]; then
+                break
+            fi
+        done
     fi
+    ps_ll_traffic > $LOG_DIR/ps.out
 
     >&2 echo "Waiting for all LL traffic to finish ..."
     while [[ $c -ne 0 ]]; do
