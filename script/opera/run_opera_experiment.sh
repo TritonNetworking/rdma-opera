@@ -6,6 +6,7 @@ LOG_DIR=~/opera.logs
 ALL_LOGS=~/Source/opera.data
 
 # Config
+USE_CLOCK=true
 CLOCK_FREQ=250
 
 host_count=$(cat $SCRIPT_DIR/hosts.config | wc -l)
@@ -33,6 +34,8 @@ print_config()
     >&2 echo "Connection count: $conn_count"
     >&2 echo "Repo dir:         $REPO_DIR"
     >&2 echo "Log dir:          $LOG_DIR"
+    >&2 echo "Use clock:        $USE_CLOCK"
+    >&2 echo "Clock freq:       $CLOCK_FREQ"
     >&2 echo
 }
 
@@ -170,7 +173,9 @@ run_experiment()
     >&2 echo "All $conn_count LL traffic have launched. Sleeping for 5s ..."
     sleep 5
 
-    clock_pid=$(switch_run_clock_bg)
+    if $USE_CLOCK; then
+        clock_pid=$(switch_run_clock_bg)
+    fi
 
     >&2 echo "Waiting for all LL traffic to finish ..."
     while [[ $c -ne 0 ]]; do
@@ -182,7 +187,9 @@ run_experiment()
     >&2 echo "All LL traffic has finished."
     ls -lh $LOG_DIR > $LOG_DIR/ll-orig.out
 
-    switch_kill_clock $clock_pid
+    if $USE_CLOCK; then
+        switch_kill_clock $clock_pid
+    fi
 
     >&2 echo "Experiment finished. Processing data ..."
     perm_log_dir="$ALL_LOGS/$d"
