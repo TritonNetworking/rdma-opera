@@ -6,7 +6,7 @@ import numpy as np
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-l', '--logs', required=True, nargs='+', type=argparse.FileType('r'), help='Log files')
-parser.add_argument('-t', '--ttls', required=True, nargs='+', type=argparse.FileType('r'), help='TTL files')
+parser.add_argument('-t', '--ttls', required=False, nargs='+', type=argparse.FileType('r'), help='TTL files')
 parser.add_argument('--show-legend', required=False, action='store_true', help='Show legend')
 parser.add_argument('-e', '--export', required=False, type=argparse.FileType('w'), help='Export to CSV file')
 parser.add_argument('-p', '--plot', required=True, choices=[ 'cdf', 'time', 'scatter' ], help='The type of plot')
@@ -36,14 +36,14 @@ def plot_cdf(l, name):
     plt.plot(x, y, linewidth=LINEWIDTH, label=name)
 
 def plot_time(l, name):
-    x = np.range(len(l))
+    x = np.arange(len(l))
     y = np.array(l)
     plt.plot(x, y, linewidth=LINEWIDTH, label=name)
 
 def plot_scatter(l, name):
-    x = np.range(len(l))
+    x = np.arange(len(l))
     y = np.array(l)
-    plt.plot(x, y, s=1, label=name)
+    plt.scatter(x, y, s=1, label=name)
 
 def set_plot_options():
     if args.plot == 'cdf':
@@ -144,14 +144,14 @@ def main():
         mat = []
     if args.stats:
         print 'count,min,max,average,median,percent90,percent99,over1s'
-    assert len(args.ttls) == 0 or len(args.logs) == len(args.ttls), "Not the same number of TTL files as log files."
-    assert len(args.ttls) == 0 or args.plot == 'cdf', "Only \"cdf\" mode is supported with TTL logs."
+    assert args.ttls is None or len(args.logs) == len(args.ttls), "Not the same number of TTL files as log files."
+    assert args.ttls is None or args.plot == 'cdf', "Only \"cdf\" mode is supported with TTL logs."
     for index in xrange(len(args.logs)):
         f = args.logs[index]
         print >> sys.stderr, 'Processing "%s" ...' % f.name
         name = get_shortname(f.name)
         rtts = process_log(f)
-        if len(args.ttls) > 0:
+        if args.ttls is not None:
             ttls = process_ttl(args.ttls[index])
             assert len(rtts) + 1 == len(ttls), 'Not the same number of TTL entries as RTTs'
             plot_ttl_cdf(rtts, ttls, name)
