@@ -144,13 +144,13 @@ abort()
 
 plot_cdf_and_save_stats()
 {
-    $logdir=$1
+    logdir=$1
     $OPERA_PLOT -l $logdir/raw/*.log -p cdf -o $logdir/cdf.png -s > $logdir/stats.txt
 }
 
 plot_scatter()
 {
-    $logdir=$1
+    logdir=$1
     $OPERA_PLOT -l $logdir/raw/*.log -p scatter -o $logdir/scatter.png
 }
 
