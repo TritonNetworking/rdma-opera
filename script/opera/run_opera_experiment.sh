@@ -8,7 +8,7 @@ LOG_DIR=~/opera.logs
 ALL_LOGS=~/Source/opera.data
 
 # Config
-USE_CLOCK=true
+USE_CLOCK=false
 CLOCK_FREQ=250
 
 # Programs
@@ -99,7 +99,7 @@ kill_ll_traffic()
 
 ps_ll_traffic()
 {
-    echo $($PSSH_LAUNCH "ps aux | grep [i]b_send_lat")
+    echo "$($PSSH_LAUNCH "ps aux | grep [i]b_send_lat")"
 }
 
 switch_set_l3()
@@ -111,8 +111,8 @@ switch_set_l3()
 switch_run_clock_bg()
 {
     >&2 echo "Running \"$CLOCK_EXEC $CLOCK_FREQ\" in background ..."
-    sudo $CLOCK_EXEC $CLOCK_FREQ
-    pid=$!
+    sudo bash -c "$CLOCK_EXEC $CLOCK_FREQ &"
+    pid=$(pidof $(basename $CLOCK_EXEC))
     echo $pid
 }
 
