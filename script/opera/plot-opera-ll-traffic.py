@@ -19,6 +19,7 @@ if args.output:
     import matplotlib
     matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.ticker import AutoMinorLocator
 
 # LL traffic configuration parameters
 GAP = 1000                  # GAP in µs
@@ -46,6 +47,11 @@ def plot_scatter(l, name):
     plt.scatter(x, y, s=1, label=name)
 
 def set_plot_options():
+    ax = plt.gca()
+    minor_locator = AutoMinorLocator(5)
+    ax.yaxis.set_minor_locator(minor_locator)
+    ax.grid(which='minor', alpha=0.2)
+    ax.grid(which='major', alpha=0.5)
     if args.plot == 'cdf':
         plt.xlabel('RTT (us)')
         plt.xlim(0.0, 40.0)
