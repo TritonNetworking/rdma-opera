@@ -102,6 +102,12 @@ ps_ll_traffic()
     echo "$($PSSH_LAUNCH "ps aux | grep [i]b_send_lat")"
 }
 
+get_run_times()
+{
+    psout="$1"
+    echo "$(echo "$psout" | grep "ib_send_lat" | awk '{ print $10 }' | sort)"
+}
+
 switch_set_l3()
 {
     >&2 echo "Setting switch to L3 mode ..."
@@ -220,7 +226,12 @@ run_experiment()
             fi
         done
     fi
-    ps_ll_traffic > $LOG_DIR/ps.out
+    psout=$(ps_ll_traffic)
+    echo "$psout" > $LOG_DIR/ps.out
+    run_times=$(get_run_times "$psout")
+    min_run_time=$(echo "$run_times" | head -1)
+    max_run_time=$(echo "$run_times" | tail -1)
+    >&2 echo "min elapsed = $min_run_time, max elapsed = $max_run_time"
 
     >&2 echo "Waiting for all LL traffic to finish ..."
     while [[ $c -ne 0 ]]; do
@@ -253,7 +264,3 @@ run_experiment()
 set -e
 run_experiment
 
-# get_run_time()
-# {
-#     echo $(./pssh-launch.sh "ps aux | grep [i]b_send_lat" | grep "ib_send_lat" | awk '{ print $10 }')
-# }
