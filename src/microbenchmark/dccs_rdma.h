@@ -466,7 +466,7 @@ out_free_buf:
 /**
  * Send RDMA MR information to remote peer.
  */
-int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, size_t count, size_t length) {
+int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, size_t count) {
     struct ibv_mr *mr_count, *mr_array;
     struct ibv_wc wc;
     int rv = -1;
@@ -820,7 +820,8 @@ void print_raw_latencies(double *latencies, size_t count) {
 /**
  * Print latency report.
  */
-void print_latency_report(struct dccs_parameters *params, struct dccs_request *requests) {
+void print_latency_report_raw(uint64_t *starts, uint64_t *ends, size_t length, uint64_t begin,
+                                bool verbose, size_t requests_count, size_t requests_length) {
     double sum = 0;
     double min = DBL_MAX;
     double max = 0;
@@ -828,24 +829,22 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
     double percent90, percent99;
 
     // Note: latency measurement does not take warmup into account for now.
-    size_t count = params->count;
-    size_t length = params->length;
-
-    double *latencies = malloc(count * sizeof(double));
+    double *latencies = malloc(length * sizeof(double));
 
     log_info("=====================\n");
     log_info("Latency Report\n");
 
-    double first_start = (double)requests[0].start * MILLION / (double)clock_rate;
+    double first_start = (double)begin * MILLION / (double)clock_rate;
     int finished_count = 0;
 
-    for (size_t n = 0; n < count; n++) {
-        struct dccs_request *request = requests + n;
-        uint64_t elapsed_cycles = request->end - request->start;
-        //double start = (double)request->start * MILLION / (double)clock_rate;
-        double end = (double)request->end * MILLION / (double)clock_rate;
+    for (size_t n = 0; n < length; n++) {
+        uint64_t start = *(starts + n);
+        uint64_t end = *(ends + n);
+        uint64_t elapsed_cycles = end - start;
+        //double dstart = (double)start * MILLION / (double)clock_rate;
+        double dend = (double)end * MILLION / (double)clock_rate;
         double latency = (double)elapsed_cycles * MILLION / (double)clock_rate;
-        if (end - first_start <= DCCS_CYCLE_UPTIME)
+        if (dend - first_start <= DCCS_CYCLE_UPTIME)
             finished_count++;
 
         latencies[n] = latency;
@@ -856,29 +855,43 @@ void print_latency_report(struct dccs_parameters *params, struct dccs_request *r
             min = latency;
     }
 
-    if (params->verbose)
-        print_raw_latencies(latencies, count);
+    if (verbose)
+        print_raw_latencies(latencies, length);
 
-    sort_latencies(latencies, count);
-    median = latencies[count / 2];
-    percent90 = latencies[(int)((double)count * 0.9)];
-    percent99 = latencies[(int)((double)count * 0.99)];
-    average = sum / (double)count;
+    sort_latencies(latencies, length);
+    median = latencies[length / 2];
+    percent90 = latencies[(int)((double)length * 0.9)];
+    percent99 = latencies[(int)((double)length * 0.99)];
+    average = sum / (double)length ;
 
     sumsq = 0;
-    for (size_t n = 0; n < count; n++) {
+    for (size_t n = 0; n < length; n++) {
         double latency = latencies[n];
         sumsq += pow((latency - average), 2);
     }
 
-    stdev = sqrt(sumsq / (double)count);
+    stdev = sqrt(sumsq / (double)length);
 
     log_info("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
-    log_info("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", length, count, median, average, min, max, stdev, percent90, percent99);
+    log_info("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", requests_length, requests_count, median, average, min, max, stdev, percent90, percent99);
     log_info("# of requests sent in %d µsec: %d.\n", DCCS_CYCLE_UPTIME, finished_count);
     log_info("=====================\n\n");
 
     free(latencies);
+}
+
+void print_latency_report(struct dccs_parameters *params, struct dccs_request *requests) {
+    uint64_t *start, *end;
+    start = malloc(params->count * sizeof(uint64_t));
+    end = malloc(params->count * sizeof(uint64_t));
+    for (size_t n = 0; n < params->count; n++) {
+        start[n] = requests[n].start;
+        end[n] = requests[n].end;
+    }
+
+    print_latency_report_raw(start, end, params->count, requests[0].start, params->verbose, params->count, params->length);
+    free(start);
+    free(end);
 }
 
 /**

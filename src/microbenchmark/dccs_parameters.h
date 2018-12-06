@@ -32,6 +32,7 @@ struct dccs_parameters {
     size_t warmup_count;
     size_t mr_count;
     int direction;
+    uint16_t index;
     uint8_t tos;
     uint8_t slot;
     bool verbose;

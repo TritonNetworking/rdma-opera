@@ -318,6 +318,7 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
     params->warmup_count = DEFAULT_WARMUP_COUNT;
     params->mr_count = DEFAULT_MR_COUNT;
     params->direction = DEFAULT_DIRECTION;
+    params->index = DEFAULT_INDEX;
     params->tos = DEFAULT_TOS;
     params->verbose = false;
 
@@ -335,12 +336,13 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
             { "repeat", required_argument, 0, 'r' },
             { "warmup", required_argument, 0, 'w' },
             { "direction", required_argument, 0, OPT_DIRECTION },
+            { "index", required_argument, 0, 'i' },
             { "tos", required_argument, 0, OPT_TOS },
             { "verbose", no_argument, 0, 'V' },
             { "help", no_argument, 0, 'h' }
         };
 
-        c = getopt_long(argc, argv, "b:c:v:p:m:r:w:Vh", long_options, NULL);
+        c = getopt_long(argc, argv, "b:c:v:p:m:r:w:i:Vh", long_options, NULL);
         if (c == -1)
             break;
 
@@ -406,6 +408,12 @@ void parse_args(int argc, char *argv[], struct dccs_parameters *params) {
                 } else if (strcmp(optarg, "N-N") == 0) {
                     params->direction = DIR_BOTH;
                 } else {
+                    goto invalid;
+                }
+
+                break;
+            case 'i':
+                if (sscanf(optarg, "%" SCNu16, &(params->index)) != 1) {
                     goto invalid;
                 }
 

@@ -50,14 +50,15 @@ int run(struct dccs_parameters params) {
     if (params.verb == Read || params.verb == Write) {
         if (role == ROLE_CLIENT) {
             log_debug("Getting remote MR info ...\n");
-            if ((rv = get_remote_mr_info(id, requests, params.count)) < 0) {
+            rv = get_remote_mr_info(id, requests, params.count);
+            if (rv < 0) {
                 log_debug("rv = %d.\n", rv);
                 log_error("Failed to get remote MR info.\n");
                 goto out_deallocate_buffer;
             }
         } else {    // role == ROLE_SERVER
             log_debug("Sending local MR info ...\n");
-            rv = send_local_mr_info(id, requests, params.count, params.length);
+            rv = send_local_mr_info(id, requests, params.count);
             if (rv < 0) {
                 log_error("Failed to get remote MR info.\n");
                 goto out_deallocate_buffer;
