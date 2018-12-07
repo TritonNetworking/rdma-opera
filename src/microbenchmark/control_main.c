@@ -66,7 +66,7 @@ int run(struct dccs_parameters params) {
 
     if (role == ROLE_SERVER) {
         log_debug("Getting remote MR info ...\n");
-        rv = get_remote_mr_info(id, &request_in, params.count);
+        rv = get_remote_mr_info(id, &request_out, params.count);
         if (rv < 0) {
             log_debug("rv = %d.\n", rv);
             log_error("Failed to get remote MR info.\n");
@@ -74,21 +74,21 @@ int run(struct dccs_parameters params) {
         }
 
         log_debug("Sending local MR info ...\n");
-        rv = send_local_mr_info(id, &request_out, params.count);
+        rv = send_local_mr_info(id, &request_in, params.count);
         if (rv < 0) {
             log_error("Failed to send remote MR info.\n");
             goto out_deallocate_buffer;
         }
     } else {    // role == ROLE_CLIENT
         log_debug("Sending local MR info ...\n");
-        rv = send_local_mr_info(id, &request_out, params.count);
+        rv = send_local_mr_info(id, &request_in, params.count);
         if (rv < 0) {
             log_error("Failed to send remote MR info.\n");
             goto out_deallocate_buffer;
         }
 
         log_debug("Getting remote MR info ...\n");
-        rv = get_remote_mr_info(id, &request_in, params.count);
+        rv = get_remote_mr_info(id, &request_out, params.count);
         if (rv < 0) {
             log_debug("rv = %d.\n", rv);
             log_error("Failed to get remote MR info.\n");
@@ -96,13 +96,26 @@ int run(struct dccs_parameters params) {
         }
     }
 
+    log_debug("out: remote addr = %#10x, in: addr = %#10x\n",
+                request_out.remote_addr, request_in.buf);
+
     log_debug("Sending RDMA writes ...\n");
     if (role == ROLE_SERVER) {
         start = malloc(params.repeat * sizeof(uint64_t));
+        if (start == NULL) {
+            perror("malloc");
+            goto out_deallocate_buffer;
+        }
         end = malloc(params.repeat * sizeof(uint64_t));
+        if (end == NULL) {
+            perror("malloc");
+            goto out_deallocate_buffer;
+        }
     }
 
+    //uint32_t recvd = 0;
     for (size_t n = 0; n < params.repeat; n++) {
+        //log_debug("n = %zu.\n", n);
         if (role == ROLE_SERVER) {
             rv = dccs_rdma_write_with_flags(id, request_out.buf, request_out.length, request_out.mr,
                                             request_out.remote_addr, request_out.remote_rkey, 0);
@@ -111,16 +124,29 @@ int run(struct dccs_parameters params) {
                 log_error("Failed to send write.\n");
                 break;
             }
-            while (magic != *((uint32_t *)request_in.buf));
+            /*while (magic != recvd) {
+                sleep(1);
+                recvd = *((uint32_t *)request_in.buf);
+                log_debug("recvd = %#010x\n", recvd);
+            }*/
+            while (magic != *((volatile uint32_t *)request_in.buf));
             end[n] = get_cycles();
+            memset(request_in.buf, 0, request_in.length);
         } else {    // role == ROLE_CLIENT
-            while (magic != *((uint32_t *)request_in.buf));
+            /*while (magic != recvd) {
+                sleep(1);
+                recvd = *((uint32_t *)request_in.buf);
+                log_debug("recvd = %#010x\n", recvd);
+            }*/
+            while (magic != *((volatile uint32_t *)request_in.buf));
             rv = dccs_rdma_write_with_flags(id, request_out.buf, request_out.length, request_out.mr,
                                             request_out.remote_addr, request_out.remote_rkey, 0);
             if (rv != 0) {
                 log_error("Failed to send write.\n");
                 break;
             }
+
+            memset(request_in.buf, 0, request_in.length);
         }
     }
 
@@ -143,24 +169,29 @@ int run(struct dccs_parameters params) {
 
     if (role == ROLE_SERVER) {
         print_latency_report_raw(start, end, params.repeat, start[0], params.verbose, params.count, params.length);
-        free(start);
-        free(end);
     }
 
     // Print stats
     if (role == ROLE_SERVER) {
-        log_info("Server sent:");
+        log_info("Server sent:\n");
         print_sha1sum(&request_out, params.count);
-        log_info("Server received:");
+        log_info("Server received:\n");
         print_sha1sum(&request_in, params.count);
     } else {
-        log_info("Client received:");
+        log_info("Client received:\n");
         print_sha1sum(&request_in, params.count);
-        log_info("Client sent:");
+        log_info("Client sent:\n");
         print_sha1sum(&request_out, params.count);
     }
 
 out_deallocate_buffer:
+    if (role == ROLE_SERVER) {
+        if (start != NULL)
+            free(start);
+        if (end != NULL)
+            free(end);
+    }
+
     log_debug("de-allocating buffer\n");
     deallocate_buffer(&request_in, params);
     deallocate_buffer(&request_out, params);
