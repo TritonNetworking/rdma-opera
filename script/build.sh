@@ -7,6 +7,8 @@ if ! [ -x "$(command -v mpirun)" ]; then
     source ./setup-hpcx.sh
 fi
 
+VERBOSE=false
+
 # Parse command line arguments
 # Source: https://stackoverflow.com/questions/192249/how-do-i-parse-command-line-arguments-in-bash
 while [[ $# -gt 0 ]]
@@ -24,6 +26,10 @@ case $key in
     ;;
     -d|--debug)
     DEBUG=true
+    shift # past argument
+    ;;
+    -v|--verbose)
+    VERBOSE=true
     shift # past argument
     ;;
     *)
@@ -49,6 +55,10 @@ if [ $CLEAN ]; then
     make clean
 fi
 
-make
+if $VERBOSE; then
+    make VERBOSE=1
+else
+    make
+fi
 )
 
