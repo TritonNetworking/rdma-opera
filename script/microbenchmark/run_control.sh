@@ -17,7 +17,11 @@ tos=32
 
 server="$1"
 execpath=$CONTROL_SIGNAL_EXECPATH
+execflags=""
+execflags+="-b $length -c $count -v $verb -m $mode -r $repeat "
+execflags+="-w $warmup --mr_count=$mr_count --tos=$tos "
+execflags+="--verbose "
 
 set -x
-$execpath -b $length -c $count -v $verb -m $mode -r $repeat -w $warmup --mr_count=$mr_count --tos=$tos $server
+$execpath $execflags $server
 
