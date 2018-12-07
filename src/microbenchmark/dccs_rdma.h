@@ -872,8 +872,8 @@ void print_latency_report_raw(uint64_t *starts, uint64_t *ends, size_t length, u
 
     stdev = sqrt(sumsq / (double)length);
 
-    log_info("#bytes, #iterations, median, average, min, max, stdev, percent90, percent99\n");
-    log_info("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", requests_length, requests_count, median, average, min, max, stdev, percent90, percent99);
+    log_info("#bytes, #length, median, average, min, max, stdev, percent90, percent99\n");
+    log_info("%zu, %zu, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f, %.3f\n", requests_length, length, median, average, min, max, stdev, percent90, percent99);
     log_info("# of requests sent in %d µsec: %d.\n", DCCS_CYCLE_UPTIME, finished_count);
     log_info("=====================\n\n");
 

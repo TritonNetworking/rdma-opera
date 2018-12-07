@@ -112,12 +112,12 @@ int run(struct dccs_parameters params) {
 
     log_debug("Sending RDMA writes ...\n");
     if (role == ROLE_SERVER) {
-        start = calloc(params.repeat, sizeof(uint64_t));
+        start = calloc(params.repeat * params.count, sizeof(uint64_t));
         if (start == NULL) {
             perror("calloc");
             goto out_deallocate_buffer;
         }
-        end = calloc(params.repeat, sizeof(uint64_t));
+        end = calloc(params.repeat * params.count, sizeof(uint64_t));
         if (end == NULL) {
             perror("calloc");
             goto out_deallocate_buffer;
@@ -148,7 +148,7 @@ int run(struct dccs_parameters params) {
             struct dccs_request *request_in = requests_in + i;
             struct dccs_request *request_out = requests_out + i;
             if (role == ROLE_SERVER) {
-                start[n] = get_cycles();
+                start[n * params.count + i] = get_cycles();
                 rv = dccs_rdma_write_with_flags(id,
                         request_out->buf, request_out->length, request_out->mr,
                         request_out->remote_addr, request_out->remote_rkey, flag);
@@ -163,7 +163,7 @@ int run(struct dccs_parameters params) {
                     log_debug("recvd = %#010x\n", recvd);
                 }*/
                 while (magic != *((volatile uint32_t *)request_in->buf));
-                end[n] = get_cycles();
+                end[n * params.count + i] = get_cycles();
                 memset(request_in->buf, 0, request_in->length);
             } else {    // role == ROLE_CLIENT
                 /*while (magic != recvd) {
@@ -212,7 +212,7 @@ int run(struct dccs_parameters params) {
     }
 
     if (role == ROLE_SERVER) {
-        print_latency_report_raw(start, end, params.repeat, start[0], params.verbose, params.count, params.length);
+        print_latency_report_raw(start, end, params.repeat * params.count, start[0], params.verbose, params.count, params.length);
     }
 
     // Print stats
