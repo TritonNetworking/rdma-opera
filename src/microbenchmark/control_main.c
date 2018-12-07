@@ -6,6 +6,7 @@
 #define _GNU_SOURCE
 
 #define MAGIC 0xd1cefa11
+#define SIGNAL_INTERVAL 1000
 
 #include <assert.h>
 #include <stdio.h>
@@ -18,6 +19,7 @@ uint64_t clock_rate = 0;    // Clock ticks per second
 
 int run(struct dccs_parameters params) {
     struct rdma_cm_id *listen_id = NULL, *id;
+    struct ibv_wc wc;
     struct dccs_request request_out, request_in;
     uint64_t *start = NULL, *end = NULL;
     int rv = 0;
@@ -114,12 +116,15 @@ int run(struct dccs_parameters params) {
     }
 
     //uint32_t recvd = 0;
+    int flag;
     for (size_t n = 0; n < params.repeat; n++) {
         //log_debug("n = %zu.\n", n);
+        bool signal = (n % SIGNAL_INTERVAL == 0);
+        flag = signal ? IBV_SEND_SIGNALED : 0;
         if (role == ROLE_SERVER) {
-            rv = dccs_rdma_write_with_flags(id, request_out.buf, request_out.length, request_out.mr,
-                                            request_out.remote_addr, request_out.remote_rkey, 0);
             start[n] = get_cycles();
+            rv = dccs_rdma_write_with_flags(id, request_out.buf, request_out.length, request_out.mr,
+                                            request_out.remote_addr, request_out.remote_rkey, flag);
             if (rv != 0) {
                 log_error("Failed to send write.\n");
                 break;
@@ -140,13 +145,21 @@ int run(struct dccs_parameters params) {
             }*/
             while (magic != *((volatile uint32_t *)request_in.buf));
             rv = dccs_rdma_write_with_flags(id, request_out.buf, request_out.length, request_out.mr,
-                                            request_out.remote_addr, request_out.remote_rkey, 0);
+                                            request_out.remote_addr, request_out.remote_rkey, flag);
             if (rv != 0) {
                 log_error("Failed to send write.\n");
                 break;
             }
 
             memset(request_in.buf, 0, request_in.length);
+        }
+
+        if (signal) {
+            while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
+            if (rv < 0) {
+                log_error("Failed to send comp message.\n");
+                break;
+            }
         }
     }
 
