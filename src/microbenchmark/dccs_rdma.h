@@ -808,11 +808,11 @@ void print_sha1sum(struct dccs_request *requests, size_t count) {
     free(array);
 }
 
-void print_raw_latencies(double *latencies, size_t count) {
+void print_raw_latencies(double *start, double *end, double *latencies, size_t count) {
     log_verbose("Raw latency (µsec):\n");
     log_verbose("Start,End,Latency\n");
     for (size_t n = 0; n < count; n++)
-        log_verbose("%.3f\n", latencies[n]);
+        log_verbose("%.3f,%.3f,%.3f\n", start[n], end[n], latencies[n]);
 
     log_verbose("\n");
 }
@@ -829,6 +829,8 @@ void print_latency_report_raw(uint64_t *starts, uint64_t *ends, size_t length, u
     double percent90, percent99;
 
     // Note: latency measurement does not take warmup into account for now.
+    double *dstarts = malloc(length * sizeof(double));
+    double *dends = malloc(length * sizeof(double));
     double *latencies = malloc(length * sizeof(double));
 
     log_info("=====================\n");
@@ -841,12 +843,14 @@ void print_latency_report_raw(uint64_t *starts, uint64_t *ends, size_t length, u
         uint64_t start = *(starts + n);
         uint64_t end = *(ends + n);
         uint64_t elapsed_cycles = end - start;
-        //double dstart = (double)start * MILLION / (double)clock_rate;
+        double dstart = (double)start * MILLION / (double)clock_rate;
         double dend = (double)end * MILLION / (double)clock_rate;
         double latency = (double)elapsed_cycles * MILLION / (double)clock_rate;
         if (dend - first_start <= DCCS_CYCLE_UPTIME)
             finished_count++;
 
+        dstarts[n] = dstart;
+        dends[n] = dend;
         latencies[n] = latency;
         sum += latency;
         if (latency > max)
@@ -856,7 +860,7 @@ void print_latency_report_raw(uint64_t *starts, uint64_t *ends, size_t length, u
     }
 
     if (verbose)
-        print_raw_latencies(latencies, length);
+        print_raw_latencies(dstarts, dends, latencies, length);
 
     sort_latencies(latencies, length);
     median = latencies[length / 2];
@@ -877,6 +881,8 @@ void print_latency_report_raw(uint64_t *starts, uint64_t *ends, size_t length, u
     log_info("# of requests sent in %d µsec: %d.\n", DCCS_CYCLE_UPTIME, finished_count);
     log_info("=====================\n\n");
 
+    free(dstarts);
+    free(dends);
     free(latencies);
 }
 
