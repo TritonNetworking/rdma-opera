@@ -157,14 +157,6 @@ int run(struct dccs_parameters params) {
                     log_error("Failed to send write.\n");
                     break;
                 }
-                /*while (magic != recvd) {
-                    sleep(1);
-                    recvd = *((uint32_t *)request_in->buf);
-                    log_debug("recvd = %#010x\n", recvd);
-                }*/
-                while (magic != *((volatile uint32_t *)request_in->buf));
-                end[n * params.count + i] = get_cycles();
-                memset(request_in->buf, 0, request_in->length);
             } else {    // role == ROLE_CLIENT
                 /*while (magic != recvd) {
                     sleep(1);
@@ -190,6 +182,20 @@ int run(struct dccs_parameters params) {
                     log_error("Failed to send comp message.\n");
                     break;
                 }
+            }
+        }
+
+        for (size_t i = 0; i < params.count; i++) {
+            if (role == ROLE_SERVER) {
+                struct dccs_request *request_in = requests_in + i;
+                /*while (magic != recvd) {
+                    sleep(1);
+                    recvd = *((uint32_t *)request_in->buf);
+                    log_debug("recvd = %#010x\n", recvd);
+                }*/
+                while (magic != *((volatile uint32_t *)request_in->buf));
+                end[n * params.count + i] = get_cycles();
+                memset(request_in->buf, 0, request_in->length);
             }
         }
     }
