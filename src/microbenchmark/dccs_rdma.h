@@ -243,26 +243,35 @@ static inline int dccs_rdma_write(struct rdma_cm_id *id, void *addr, size_t leng
 /**
  * Retrieve a completed send, read or write request.
  */
-int dccs_rdma_send_comp(struct rdma_cm_id *id, struct ibv_wc *wc) {
+int dccs_rdma_send_comp(struct rdma_cm_id *id, int num, struct ibv_wc *wc_arr) {
+    int sum = 0;
     int rv;
     //log_debug("RDMA send completion ..\n");
-    do {
-        rv = ibv_poll_cq(id->send_cq, 1, wc);
-    } while (rv == 0);
+    while (sum < num) {
+        do {
+            rv = ibv_poll_cq(id->send_cq, num, wc_arr + sum);
+        } while (rv == 0);
+        //log_debug("ibv_poll_cq returned %d.\n", rv);
 
-    if (rv < 0) {
-        log_error("ibv_poll_cq() failed, error = %d.\n", rv);
-        return -1;
-    }
+        if (rv < 0) {
+            log_error("ibv_poll_cq() failed, error = %d.\n", rv);
+            return -1;
+        }
 
-    if (wc->status != IBV_WC_SUCCESS) {
-        log_error("Failed status %s (%d) for wr_id %d\n",
-            ibv_wc_status_str(wc->status), wc->status, (int)wc->wr_id);
-        return -1;
+        for (int n = sum; n < sum + rv; n++) {
+            struct ibv_wc *wc = wc_arr + n;
+            if (wc->status != IBV_WC_SUCCESS) {
+                log_error("Failed status %s (%d) for wr_id %d\n",
+                    ibv_wc_status_str(wc->status), wc->status, (int)wc->wr_id);
+                return -1;
+            }
+        }
+
+        sum += rv;
     }
 
     //log_debug("RDMA send completion returned %d.\n", rv);
-    return rv;
+    return sum;
 }
 
 /**
@@ -506,7 +515,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
         log_error("Failed to send # of RDMA requests to remote side.\n");
         goto failure;
     }
-    while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
+    while ((rv = dccs_rdma_send_comp(id, 1, &wc)) == 0);
     if (rv < 0) {
         log_error("Failed to send comp # of RDMA requests to remote side.\n");
         goto failure;
@@ -521,7 +530,7 @@ int send_local_mr_info(struct rdma_cm_id *id, struct dccs_request *requests, siz
         log_error("Failed to send RDMA read/write request info to remote side.\n");
         goto failure;
     }
-    while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
+    while ((rv = dccs_rdma_send_comp(id, 1, &wc)) == 0);
     if (rv < 0) {
         log_error("Failed to send comp RDMA read/write request info to remote side.\n");
         goto failure;
@@ -561,7 +570,7 @@ int send_message(struct rdma_cm_id *id, void* buf, size_t length) {
         log_error("Failed to send message.\n");
         goto out_dereg_mr;
     }
-    while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
+    while ((rv = dccs_rdma_send_comp(id, 1, &wc)) == 0);
     if (rv < 0) {
         log_error("Failed to send comp message.\n");
         goto out_dereg_mr;
@@ -650,7 +659,7 @@ int wait_requests(struct rdma_cm_id *id, struct dccs_request *requests, size_t c
 
     for (size_t n = 0; n < count; n++) {
         struct dccs_request *request = requests + n;
-        rv = dccs_rdma_send_comp(id, &wc);
+        rv = dccs_rdma_send_comp(id, 1, &wc);
         request->end = get_cycles();
         if (rv < 0)
             failed_count++;
@@ -751,7 +760,7 @@ int send_and_wait_requests(struct rdma_cm_id *id, struct dccs_request *requests,
             failed = true;
 
         if (flags & IBV_SEND_SIGNALED) {
-            rv = dccs_rdma_send_comp(id, &wc);
+            rv = dccs_rdma_send_comp(id, 1, &wc);
             requests[n].end = get_cycles();
             if (rv < 0)
                 failed = true;

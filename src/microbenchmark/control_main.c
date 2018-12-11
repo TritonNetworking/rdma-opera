@@ -24,7 +24,7 @@ inline static void wait_until(uint64_t target) {
 
 int run(struct dccs_parameters params) {
     struct rdma_cm_id *listen_id = NULL, *id;
-    struct ibv_wc wc;
+    struct ibv_wc *wc = NULL;
     struct dccs_request *requests_out, *requests_in;
     uint64_t *start = NULL, *end = NULL;
     int rv = 0;
@@ -58,6 +58,7 @@ int run(struct dccs_parameters params) {
         log_error("Failed to allocate buffers.\n");
         goto out_disconnect;
     }
+    wc = calloc(params.count, sizeof(struct ibv_wc));
 
     uint32_t magic = htonl(MAGIC);
     uint16_t ts_index = htons(params.index);
@@ -112,12 +113,12 @@ int run(struct dccs_parameters params) {
 
     log_debug("Sending RDMA writes ...\n");
     if (role == ROLE_SERVER) {
-        start = calloc(params.repeat * params.count, sizeof(uint64_t));
+        start = calloc(params.repeat, sizeof(uint64_t));
         if (start == NULL) {
             perror("calloc");
             goto out_deallocate_buffer;
         }
-        end = calloc(params.repeat * params.count, sizeof(uint64_t));
+        end = calloc(params.repeat, sizeof(uint64_t));
         if (end == NULL) {
             perror("calloc");
             goto out_deallocate_buffer;
@@ -127,7 +128,7 @@ int run(struct dccs_parameters params) {
     //uint32_t recvd = 0;
     int flag;
     uint64_t target = get_cycles();
-    size_t requests_sent = 0;
+    //size_t requests_sent = 0;
     for (size_t n = 0; n < params.repeat; n++) {
         if (n % (params.repeat / 100) == 0)
         //if (n % 100 == 0)
@@ -141,18 +142,19 @@ int run(struct dccs_parameters params) {
         // Note: we need to signal occasionally;
         //  otherwise, with only unsignaled requests, WQ will be full,
         //  as they won't generate CQE.
-        bool signal = (requests_sent % SIGNAL_INTERVAL == 0);
+        //bool signal = (requests_sent % SIGNAL_INTERVAL == 0);
+        bool signal = true;
         flag = signal ? IBV_SEND_SIGNALED : 0;
 
         for (size_t i = 0; i < params.count; i++) {
             struct dccs_request *request_in = requests_in + i;
             struct dccs_request *request_out = requests_out + i;
             if (role == ROLE_SERVER) {
-                start[n * params.count + i] = get_cycles();
+                start[n] = get_cycles();
                 rv = dccs_rdma_write_with_flags(id,
                         request_out->buf, request_out->length, request_out->mr,
                         request_out->remote_addr, request_out->remote_rkey, flag);
-                requests_sent++;
+                //requests_sent++;
                 if (rv != 0) {
                     log_error("Failed to send write.\n");
                     break;
@@ -163,6 +165,7 @@ int run(struct dccs_parameters params) {
                     recvd = *((uint32_t *)request_in->buf);
                     log_debug("recvd = %#010x\n", recvd);
                 }*/
+                /*
                 while (magic != *((volatile uint32_t *)request_in->buf));
                 rv = dccs_rdma_write_with_flags(id,
                         request_out->buf, request_out->length, request_out->mr,
@@ -174,30 +177,35 @@ int run(struct dccs_parameters params) {
                 }
 
                 memset(request_in->buf, 0, request_in->length);
-            }
-
-            if (signal) {
-                while ((rv = dccs_rdma_send_comp(id, &wc)) == 0);
-                if (rv < 0) {
-                    log_error("Failed to send comp message.\n");
-                    break;
-                }
+                */
             }
         }
 
+        if (role == ROLE_SERVER && signal) {
+            while ((rv = dccs_rdma_send_comp(id, (int)params.count, wc)) == 0);
+            if (rv < 0) {
+                log_error("Failed to send comp message.\n");
+                break;
+            }
+
+            end[n] = get_cycles();
+        }
+
+/*
         for (size_t i = 0; i < params.count; i++) {
             if (role == ROLE_SERVER) {
                 struct dccs_request *request_in = requests_in + i;
-                /*while (magic != recvd) {
+                *while (magic != recvd) {
                     sleep(1);
                     recvd = *((uint32_t *)request_in->buf);
                     log_debug("recvd = %#010x\n", recvd);
-                }*/
+                }*
                 while (magic != *((volatile uint32_t *)request_in->buf));
                 end[n * params.count + i] = get_cycles();
                 memset(request_in->buf, 0, request_in->length);
             }
         }
+*/
     }
 
     // Synchronize end of a round
@@ -218,7 +226,7 @@ int run(struct dccs_parameters params) {
     }
 
     if (role == ROLE_SERVER) {
-        print_latency_report_raw(start, end, params.repeat * params.count, start[0], params.verbose, params.count, params.length);
+        print_latency_report_raw(start, end, params.repeat, start[0], params.verbose, params.count, params.length);
     }
 
     // Print stats
@@ -245,6 +253,8 @@ out_deallocate_buffer:
     log_debug("de-allocating buffer\n");
     deallocate_buffer(requests_in, params);
     deallocate_buffer(requests_out, params);
+    if (wc != NULL)
+        free(wc);
 out_disconnect:
     log_debug("Disconnecting\n");
     if (role == ROLE_CLIENT)
