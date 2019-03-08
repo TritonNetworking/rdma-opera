@@ -66,7 +66,7 @@ def set_plot_options():
 
 def print_stats(l):
     if len(l) == 0:
-        print >> sys.stderr, "count = %d, no data in file" % len(s)
+        print >> sys.stderr, "count = %d, no data in file" % len(l)
         return
     s = np.sort(l)
     p90 = s[int(len(s) * 0.90)]
