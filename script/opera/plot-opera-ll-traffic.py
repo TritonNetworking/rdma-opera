@@ -125,24 +125,18 @@ def process_ttl(f):
 
 def plot_log(rtts, name):
     if args.plot == 'cdf':
-        # Discard the warmup data in CDF
-        plot_cdf(rtts[int(warmup * RATE):int(cooldown * RATE)], name)
+        plot_cdf(rtts, name)
     elif args.plot == 'time':
         plot_time(rtts, name)
     elif args.plot == 'scatter':
         plot_scatter(rtts, name)
     #end
-    if args.stats:
-        if args.plot == 'cdf' and not args.combined:
-            print_stats(rtts[int(warmup * RATE):int(cooldown * RATE)])
-        else:
-            print_stats(rtts)
+    if args.stats and not args.combined:
+        print_stats(rtts)
     return rtts
 
 def plot_ttl_cdf(arr_rtt, arr_ttl, name):
     d = {}
-    rtts = arr_rtt[int(warmup * RATE):]
-    ttls = arr_ttl[int(warmup * RATE):]
     for i, rtt in enumerate(rtts):
         ttl = ttls[i]
         if ttl not in d:
@@ -166,16 +160,21 @@ def main():
         print >> sys.stderr, 'Processing "%s" ...' % f.name
         name = get_shortname(f.name)
         rtts = process_log(f)
+        # Discard the warmup data in CDF
+        if args.plot == 'cdf':
+            rtts = rtts[int(warmup * RATE):int(cooldown * RATE)]
         if args.ttls is not None:
             ttls = process_ttl(args.ttls[index])
+            if args.plot == 'cdf':
+                ttls = ttls[int(warmup * RATE):int(cooldown * RATE)]
             assert len(rtts) + 1 == len(ttls), 'Not the same number of TTL entries as RTTs'
             plot_ttl_cdf(rtts, ttls, name)
         elif not (args.plot == 'cdf' and args.combined):
             plot_log(rtts, name)
         if args.plot == 'cdf' and args.combined:
-            all_rtts += rtts[int(warmup * RATE):int(cooldown * RATE)]
+            all_rtts += rtts
         if args.stats or args.export:
-            mat.append(rtts[int(warmup * RATE):int(cooldown * RATE)])
+            mat.append(rtts)
     #end
     if args.plot == 'cdf' and args.combined:
         plot_log(all_rtts, "all")
