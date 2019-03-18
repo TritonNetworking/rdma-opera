@@ -73,13 +73,15 @@ def print_stats(l):
     s = np.sort(l)
     p90 = s[int(len(s) * 0.90)]
     p99 = s[int(len(s) * 0.99)]
+    p999 = s[int(len(s) * 0.999)]
+    p9999 = s[int(len(s) * 0.9999)]
     minv = min(s)
     maxv = max(s)
     avg = sum(s) / len(s)
     med = s[len(s - 1) / 2]
     over1s = sum(1 for e in s if e > 1e6)
-    print "%d,%f,%f,%f,%f,%f,%f,%d" \
-        % (len(s), minv, maxv, avg, med, p90, p99, over1s)
+    print "%d,%f,%f,%f,%f,%f,%f,%f,%f,%d" \
+        % (len(s), minv, maxv, avg, med, p90, p99, p999, p9999, over1s)
 
 def get_shortname(filename):
     return os.path.split(filename)[-1].split('.')[0]
@@ -154,7 +156,7 @@ def main():
     if args.stats or args.export:
         mat = []
     if args.stats:
-        print 'count,min,max,average,median,percent90,percent99,over1s'
+        print 'count,min,max,average,median,percent90,percent99,percent99.9,percent99.99,over1s'
     assert args.ttls is None or len(args.logs) == len(args.ttls), "Not the same number of TTL files as log files."
     assert args.ttls is None or args.plot == 'cdf', "Only \"cdf\" mode is supported with TTL logs."
     if args.plot == 'cdf' and args.combined:
