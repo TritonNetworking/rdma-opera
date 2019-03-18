@@ -24,6 +24,7 @@ from matplotlib.ticker import AutoMinorLocator
 # LL traffic configuration parameters
 GAP = 1000                  # GAP in µs
 warmup = 10                 # warmup time in seconds
+cooldown = sys.maxint       # cooldown in seconds
 
 # Derived parameters
 RATE = int(1e6 / GAP / 2)   # messages per second, both sides have a gap
@@ -122,14 +123,17 @@ def process_ttl(f):
 def plot_log(rtts, name):
     if args.plot == 'cdf':
         # Discard the warmup data in CDF
-        plot_cdf(rtts[int(warmup * RATE):], name)
+        plot_cdf(rtts[int(warmup * RATE):int(cooldown * RATE)], name)
     elif args.plot == 'time':
         plot_time(rtts, name)
     elif args.plot == 'scatter':
         plot_scatter(rtts, name)
     #end
     if args.stats:
-        print_stats(rtts)
+        if args.plot == 'cdf':
+            print_stats(rtts[int(warmup * RATE):int(cooldown * RATE)])
+        else:
+            print_stats(rtts)
     return rtts
 
 def plot_ttl_cdf(arr_rtt, arr_ttl, name):
@@ -164,7 +168,7 @@ def main():
         else:
             plot_log(rtts, name)
         if args.stats or args.export:
-            mat.append(rtts)
+            mat.append(rtts[int(warmup * RATE):int(cooldown * RATE)])
     #end
     set_plot_options()
     if args.output:
