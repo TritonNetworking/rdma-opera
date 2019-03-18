@@ -10,6 +10,7 @@ parser.add_argument('-t', '--ttls', required=False, nargs='+', type=argparse.Fil
 parser.add_argument('--show-legend', required=False, action='store_true', help='Show legend')
 parser.add_argument('-e', '--export', required=False, type=argparse.FileType('w'), help='Export to CSV file')
 parser.add_argument('-p', '--plot', required=True, choices=[ 'cdf', 'time', 'scatter' ], help='The type of plot')
+parser.add_argument('--combined', action="store_true", help='Whether to plot combined CDF')
 parser.add_argument('-o', '--output', type=argparse.FileType('w'), help='Output plot to file')
 parser.add_argument('-s', '--stats', action='store_true', help='Whether to show stats')
 args = parser.parse_args()
@@ -130,7 +131,7 @@ def plot_log(rtts, name):
         plot_scatter(rtts, name)
     #end
     if args.stats:
-        if args.plot == 'cdf':
+        if args.plot == 'cdf' and not args.combined:
             print_stats(rtts[int(warmup * RATE):int(cooldown * RATE)])
         else:
             print_stats(rtts)
@@ -156,6 +157,8 @@ def main():
         print 'count,min,max,average,median,percent90,percent99,over1s'
     assert args.ttls is None or len(args.logs) == len(args.ttls), "Not the same number of TTL files as log files."
     assert args.ttls is None or args.plot == 'cdf', "Only \"cdf\" mode is supported with TTL logs."
+    if args.plot == 'cdf' and args.combined:
+        all_rtts = []
     for index in xrange(len(args.logs)):
         f = args.logs[index]
         print >> sys.stderr, 'Processing "%s" ...' % f.name
@@ -165,11 +168,15 @@ def main():
             ttls = process_ttl(args.ttls[index])
             assert len(rtts) + 1 == len(ttls), 'Not the same number of TTL entries as RTTs'
             plot_ttl_cdf(rtts, ttls, name)
-        else:
+        elif not (args.plot == 'cdf' and args.combined):
             plot_log(rtts, name)
+        if args.plot == 'cdf' and args.combined:
+            all_rtts += rtts[int(warmup * RATE):int(cooldown * RATE)]
         if args.stats or args.export:
             mat.append(rtts[int(warmup * RATE):int(cooldown * RATE)])
     #end
+    if args.plot == 'cdf' and args.combined:
+        plot_log(all_rtts, "all")
     set_plot_options()
     if args.output:
         print >> sys.stderr, 'Saving figure to "%s" ...' % args.output.name
