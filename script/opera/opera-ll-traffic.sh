@@ -10,7 +10,7 @@ curr_host_num=${curr_host:4:2}
 
 # Run configuration
 LATENCY_GAP=1000    # in µs
-ITERS=$((1 * 30 * 1000 / 2))
+ITERS=$((4 * 60 * 1000 / 2))
 BLOCKSIZE=6
 WAIT=false
 TOS=4
