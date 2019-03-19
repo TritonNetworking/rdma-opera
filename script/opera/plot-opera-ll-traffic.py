@@ -24,14 +24,14 @@ from matplotlib.ticker import AutoMinorLocator
 
 # LL traffic configuration parameters
 GAP = 1000                  # GAP in µs
-warmup = 10                 # warmup time in seconds
+warmup = 0                  # warmup time in seconds
 cooldown = sys.maxint       # cooldown in seconds
 
 # Derived parameters
 RATE = int(1e6 / GAP / 2)   # messages per second, both sides have a gap
 
 # Plot options
-LINEWIDTH=0.75
+LINEWIDTH=1.5
 
 def plot_cdf(l, name):
     x = np.sort(l)
@@ -56,7 +56,7 @@ def set_plot_options():
     ax.grid(which='major', alpha=0.5)
     if args.plot == 'cdf':
         plt.xlabel('RTT (us)')
-        plt.xlim(0.0, 40.0)
+        plt.xlim(0.0, 105.0)
         #plt.ylim(0.0, 1.0)
     else:
         plt.xlabel('sequence #')
@@ -106,6 +106,14 @@ def process_log(f):
         latency = float(splitted[1])
         # Latency no longer includes the gap
         rtt = 2 * latency
+        rtts.append(rtt)
+    return rtts
+
+def process_txt(f):
+    rtts = []
+    for line in f:
+        line = line.rstrip()
+        rtt = float(line)
         rtts.append(rtt)
     return rtts
 
@@ -159,7 +167,12 @@ def main():
         f = args.logs[index]
         print >> sys.stderr, 'Processing "%s" ...' % f.name
         name = get_shortname(f.name)
-        rtts = process_log(f)
+        if f.name.endswith('.log'):
+            rtts = process_log(f)
+        elif f.name.endswith('.txt'):
+            rtts = process_txt(f)
+        else:
+            raise ValueError('Unrecognized log file type')
         # Discard the warmup data in CDF
         if args.plot == 'cdf':
             rtts = rtts[int(warmup * RATE):int(cooldown * RATE)]
@@ -196,7 +209,7 @@ def main():
         length = len(mat[0])
         for index in xrange(length):
             arr = [mat[i][index] for i in xrange(len(mat))]
-            line = ",".join([str(x) for x in arr]) + "\n"
+            line = "\n".join([str(x) for x in arr]) + "\n"
             args.export.write(line)
 
 if __name__ == "__main__":
