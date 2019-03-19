@@ -56,11 +56,11 @@ def set_plot_options():
     ax.grid(which='major', alpha=0.5)
     if args.plot == 'cdf':
         plt.xlabel('RTT (us)')
-        plt.xlim(0.0, 105.0)
+        plt.xlim(0.0, 70.0)
         #plt.ylim(0.0, 1.0)
     else:
         plt.xlabel('sequence #')
-        #plt.ylim(0.0, 1000.0)
+        #plt.ylim(0.0, 105.0)
         plt.ylabel('RTT (us)')
         #plt.yscale('log')
     if args.show_legend:
